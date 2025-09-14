@@ -301,6 +301,8 @@ export default struct PlaylistDetail {
       .justifyContent(FlexAlign.Center)
       .visibility(this.showProgress === true ? Visibility.Visible : Visibility.None)
     }
+    .title("歌单")
+    .padding({top: 40})
     .backgroundColor($r('app.color.content_background'))
     .onBackPressed(() => {
       if (this.showPlay) {

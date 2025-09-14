@@ -1,9 +1,34 @@
 {
   "routerMap": [
     {
+      "name": "About",
+      "pageSourceFile": "src/main/ets/pages/About.ets",
+      "buildFunction": "AboutBuilder"
+    },
+    {
+      "name": "Search",
+      "pageSourceFile": "src/main/ets/pages/Search.ets",
+      "buildFunction": "SearchBuilder"
+    },
+    {
+      "name": "MySetting",
+      "pageSourceFile": "src/main/ets/pages/Setting.ets",
+      "buildFunction": "SettingBuilder"
+    },
+    {
+      "name": "Albums",
+      "pageSourceFile": "src/main/ets/pages/Albums.ets",
+      "buildFunction": "AlbumsBuilder"
+    },
+    {
       "name": "AlbumDetail",
       "pageSourceFile": "src/main/ets/pages/AlbumDetail.ets",
       "buildFunction": "AlbumDetailBuilder"
+    },
+    {
+      "name": "Artists",
+      "pageSourceFile": "src/main/ets/pages/Artists.ets",
+      "buildFunction": "ArtistsBuilder"
     },
     {
       "name": "ArtistDetail",

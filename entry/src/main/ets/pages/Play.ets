@@ -1241,5 +1241,6 @@ export default struct Play {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.SpaceAround)
+    .backgroundColor("#ffffff")
   }
 }

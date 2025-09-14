@@ -19,17 +19,20 @@ export default struct addServerBuilder {
     Column() {
       Text("添加服务器")
         .width('100%')
-        .fontSize(20)
+        .fontSize(30)
         .fontColor($r('app.color.font'))
         .fontWeight(FontWeight.Bold)
         .padding({ left: 20, right: 20 })
         .margin({ top: 20 })
         .textAlign(TextAlign.Center)
+      Text("服务器地址")
+        .width('100%')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.font'))
+        .textAlign(TextAlign.Start)
+        .margin({top: 20})
       Row() {
-        Text("服务器")
-          .width(60)
-          .fontSize(20)
-          .fontColor($r('app.color.font'))
         Select([{ value: this.urlHead[0] }, { value: this.urlHead[1] }])
           .value(this.urlHead[0])
           .selected(0)
@@ -43,7 +46,7 @@ export default struct addServerBuilder {
           .fontColor($r('app.color.font'))
           .height(40)
           .borderRadius(10)
-          .margin({ left: 15 })
+          //.margin({ left: 15 })
           .controlSize(ControlSize.SMALL)
           .optionWidth(80)
           .optionFontColor($r('app.color.font'))
@@ -77,21 +80,24 @@ export default struct addServerBuilder {
           })
       }
       .width('100%')
-      .margin({ top: 20 })
+      .margin({ top: 5 })
 
+      Text("账号与密码")
+        .width('100%')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.font'))
+        .textAlign(TextAlign.Start)
+        .margin({ top: 20 })
       Row() {
-        Text("账号")
-          .width(60)
-          .fontSize(20)
-          .fontColor($r('app.color.font'))
         TextInput({
-          placeholder: 'username'
+          placeholder: 'username/账户'
         })
           .width("100%")
           .height(40)
           .layoutWeight(1)
           .borderRadius(10)
-          .margin({ left: 15 })
+          // .margin({ left: 15 })
           .caretColor($r('app.color.font_secondary'))
           .fontColor($r('app.color.font'))
           .fontSize(20)
@@ -105,21 +111,21 @@ export default struct addServerBuilder {
           })
       }
       .width('100%')
-      .margin({ top: 20 })
+      .margin({ top: 5 })
 
       Row() {
-        Text("密码")
-          .width(60)
-          .fontSize(20)
-          .fontColor($r('app.color.font'))
+        // Text("密码")
+        //   .width(60)
+        //   .fontSize(20)
+        //   .fontColor($r('app.color.font'))
         TextInput({
-          placeholder: 'password'
+          placeholder: 'password/密码'
         })
           .width("100%")
           .height(40)
           .layoutWeight(1)
           .borderRadius(10)
-          .margin({ left: 15 })
+          // .margin({ left: 15 })
           .caretColor($r('app.color.font_secondary'))
           .fontColor($r('app.color.font'))
           .fontSize(20)
@@ -133,7 +139,7 @@ export default struct addServerBuilder {
           })
       }
       .width('100%')
-      .margin({ top: 20, bottom: 20 })
+      .margin({ top: 5, bottom: 20 })
 
       Button({ type: ButtonType.Normal }) {
         Text("保存")
@@ -142,6 +148,7 @@ export default struct addServerBuilder {
       }
       .width('100%')
       .height(50)
+      .margin({bottom: 20})
       .borderRadius(10)
       .backgroundColor($r('app.color.bar_background'))
       .onClick(async () => {

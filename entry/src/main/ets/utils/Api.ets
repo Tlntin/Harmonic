@@ -520,12 +520,14 @@ export async function search(
   let songCount: number = options?.songCount ?? 20;
   let songOffset: number = options?.songOffset ?? 0;
   try {
+    let url = baseURL + '/rest/search2' + auth + `&query=${query}`
+      + `&artistCount=${artistCount}` + `&artistOffset=${artistOffset}`
+      + `&albumCount=${albumCount}` + `&albumOffset=${albumOffset}`
+      + `&songCount=${songCount}` + `&songOffset=${songOffset}` +
+      (musicFolderId !== -1 ? `&musicFolderId=${musicFolderId}` : "");
+    console.info(`==/search/ url: ${url}`)
     const response: AxiosResponse =
-      await axios.post<string, AxiosResponse<string>>(baseURL + '/rest/search2' + auth + `&query=${query}`
-        + `&artistCount=${artistCount}` + `&artistOffset=${artistOffset}`
-        + `&albumCount=${albumCount}` + `&albumOffset=${albumOffset}`
-        + `&songCount=${songCount}` + `&songOffset=${songOffset}` +
-        (musicFolderId !== -1 ? `&musicFolderId=${musicFolderId}` : ""), {
+      await axios.post<string, AxiosResponse<string>>(url, {
         timeout: 10000
       })
     const subsonicResponse: SubsonicResponse = response.data["subsonic-response"]

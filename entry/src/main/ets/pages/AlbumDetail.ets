@@ -383,6 +383,7 @@ export default struct AlbumDetail {
       .visibility(this.showProgress === true ? Visibility.Visible : Visibility.None)
     }
     .backgroundColor($r('app.color.content_background'))
+    .padding({top: 40})
     .onBackPressed(() => {
       if (this.showPlay) {
         this.closePlay = !this.closePlay

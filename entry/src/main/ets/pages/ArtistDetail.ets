@@ -189,6 +189,7 @@ export default struct ArtistDetail {
       .justifyContent(FlexAlign.Center)
       .visibility(this.showProgress === true ? Visibility.Visible : Visibility.None)
     }
+    .padding({top: 40})
     .backgroundColor($r('app.color.content_background'))
     .onBackPressed(() => {
       if (this.showPlay) {

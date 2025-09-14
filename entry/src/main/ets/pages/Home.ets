@@ -1,7 +1,8 @@
-import { Album, Artist } from '../utils/Interface';
-import { curves } from '@kit.ArkUI';
+import { curves} from '@kit.ArkUI';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { ImageKnifeComponent } from '@ohos/imageknife'
+import { Album, Artist, MusicFolder, Song, SearchResult} from '../utils/Interface';
+import {search} from "../utils/Api";
 
 let deviceTypeInfo: string = deviceInfo.deviceType;
 
@@ -10,6 +11,11 @@ export default struct Home {
   @StorageLink('baseURL') baseURL: string = ''
   @StorageLink('username') username: string = ''
   @StorageLink('password') password: string = ''
+  @Consume salt: string;
+  @Consume version: string;
+  @Consume client: string;
+  @Consume auth: string;
+  @Consume getCoverUrl: string;
   @Consume recentAlbums: Album[]
   @Consume newestAlbums: Album[]
   @Consume frequentAlbums: Album[]
@@ -21,15 +27,19 @@ export default struct Home {
   @Consume pageStack: NavPathStack
   @Consume startPlaying: boolean
   @Consume showSidebar: boolean
-  @Consume auth: string
-  @Consume getCoverUrl: string
   @State coverSize: number = 320
   @State profileSize: number = 256
+  @Consume searchContent: string
   @Consume showProgress: boolean
   @Consume sidebarType: number
   @Consume displayWidth: number
   @Consume needUpdate: boolean
   @Consume showLibrary: boolean
+  @Consume libraryStates: Record<number, boolean>
+  @Consume musicFolders: MusicFolder[]
+  @Consume searchSongs: Song[]
+  @Consume searchAlbums: Album[]
+  @Consume searchArtists: Artist[] = []
   private recentAlbumsScroller: Scroller = new Scroller
   private newestAlbumsScroller: Scroller = new Scroller
   private frequentAlbumsScroller: Scroller = new Scroller
@@ -45,6 +55,58 @@ export default struct Home {
     Scroll() {
       Column() {
         Column() {
+          Text("首页")
+            .textAlign(TextAlign.Start)
+            .width("100%")
+            .fontSize(30)
+            .fontWeight(FontWeight.Bold)
+            // .margin({ top: 40 })
+            .padding({ left: 20, right: 20 })
+
+          Row() {
+            Search({value: this.searchContent, placeholder: "搜索歌曲/专辑/艺人"})
+              .width("100%")
+              .height(this.displayWidth > 1400 ? 50 : 40)
+              .layoutWeight(1)
+              .borderRadius(10)
+              .margin({ left: 20, right: 20 })
+              .searchIcon({
+                size: 0
+              })
+              .searchButton("搜索", {
+                fontSize: this.displayWidth > 1400 ? 20 : 18,
+                fontColor: $r('app.color.font'),
+                autoDisable: true
+              })
+              .searchIcon(
+                {src: $r("app.media.ic_public_search")}
+              )
+              .placeholderColor($r('app.color.font_secondary'))
+              .placeholderFont({
+                size: this.displayWidth > 1400 ? 22 : 20
+              })
+              .fontColor($r('app.color.font'))
+              .textFont({
+                size: this.displayWidth > 1400 ? 22 : 20
+              })
+              .caretStyle({
+                color: $r('app.color.font_secondary')
+              })
+              .onChange((tempContent)=>{
+                this.searchContent = tempContent;
+              })
+              .enterKeyType(EnterKeyType.Search)
+              .onSubmit(async()=>{
+                if (this.searchContent.length > 0) {
+                  this.pageStack.pushPathByName("Search", JSON.stringify({
+                    searchContent: this.searchContent,
+                  }))
+                }
+              })
+          }
+          .padding({top: 20})
+          // .margin({ top: 10 })
+
           Row() {
             Text("最近播放")
               .fontSize(20)
@@ -90,7 +152,7 @@ export default struct Home {
             .visibility(deviceTypeInfo === '2in1' ? Visibility.Visible : Visibility.None)
           }
           .width('100%')
-          .padding({ left: 20, right: 20 })
+          .padding({ left: 20, right: 20, top: 10})
           .margin({ top: 10 })
           .justifyContent(FlexAlign.SpaceBetween)
           .alignItems(VerticalAlign.Bottom)
@@ -137,7 +199,8 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.displayWidth > 1400 ? 250 : 210)
+        .height(this.coverSize)
+        // .height(this.displayWidth > 1400 ? 250 : 320)
         .visibility(this.showProgress === true || this.recentAlbums.length === 0 ? Visibility.None :
         Visibility.Visible)
 

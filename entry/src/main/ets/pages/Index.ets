@@ -8,6 +8,7 @@ import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { fileIo as fs, picker, ReadOptions } from '@kit.CoreFileKit';
 import CryptoJS from '@ohos/crypto-js';
+// import router from '@ohos.router';
 import {
   getAlbumList,
   getCover,
@@ -31,16 +32,14 @@ import {
 } from '../utils/Api';
 import { Album, Artist, Line, MusicFolder, Playlist, SaveState, Song, StructuredLyric,
   Verse } from '../utils/Interface';
-import Albums from './Albums';
-import Artists from './Artists';
+import {ND_login, ND_keepAlive, ND_getArtist} from "../utils/ND_Api";
+import {ND_Artist} from "../utils/ND_Interface"
+
 import Play from './Play';
-import Playlists from './Playlists';
-import Setting from './Setting';
-import About from './About';
 import selectPlaylistBuilder from './dialogs/SelectPlaylist';
 import infoBuilder from './dialogs/Info';
-import Search_ from './Search';
 import Home from './Home';
+import MyProfile from "./MyProfile";
 import { buffer } from '@kit.ArkTS';
 import { KeyCode } from '@kit.InputKit';
 import { i18n, intl } from '@kit.LocalizationKit';
@@ -71,7 +70,7 @@ struct Index {
   @Provide randomAlbums: Album[] = []
   @Provide starredAlbums: Album[] = []
   @Provide starredArtists: Artist[] = []
-  @Provide artists: Artist[] = []
+  @Provide artists: ND_Artist[] = []
   @Provide albums: Album[] = []
   @Provide songs: Song[] = []
   @Provide playlists: Playlist[] = []
@@ -97,7 +96,7 @@ struct Index {
   @Provide startPlaying: boolean = false
   @Provide isPlaying: boolean = false
   @Provide nowPlayedTime: number = 0
-  @Provide showPlay: boolean = false
+  @Provide showPlay: boolean = true
   @Provide showDevice: boolean = false
   @Provide showCover: boolean = true
   @Provide showMenu: boolean = false
@@ -140,6 +139,30 @@ struct Index {
   @StorageLink('autoPlay') autoPlay: boolean = false
   @StorageLink('showStepper') showStepper: boolean = false
   @StorageLink('downloadDir') downloadDir: string = ''
+  @Provide ND_token: string  = "";
+  @Provide ND_id: string = "";
+  @Provide searchContent: string = ""
+  @State homeTool: ToolbarItem = {
+    value: "首页",
+    icon: this.nowPage === 0 ? $r("app.media.ic_public_home_filled") : $r("app.media.ic_public_home"),
+    action:()=>{
+      console.log(`==nowPage=${this.nowPage}`);
+      this.nowPage=0;
+      this.homeTool.icon = $r("app.media.ic_public_home_filled");
+      this.myProfileTool.icon = $r("app.media.ic_public_contacts");
+    }
+  };
+  @State myProfileTool: ToolbarItem = {
+    value: "我的",
+    icon: this.nowPage === 1? $r("app.media.ic_public_contacts_filled"): $r("app.media.ic_public_contacts"),
+    action: ()=>{
+      console.log(`==nowPage=${this.nowPage}`);
+      this.nowPage = 1;
+      this.homeTool.icon = $r("app.media.ic_public_home");
+      this.myProfileTool.icon = $r("app.media.ic_public_contacts_filled");
+    }
+  }
+
   uiContext: UIContext | undefined = undefined
   context: common.UIAbilityContext | undefined = undefined
   selectPlaylist: CustomDialogController = new CustomDialogController({
@@ -713,11 +736,16 @@ struct Index {
             this.albums.push(...albums)
             break;
           case 3:
-            let artists = await getIndexes(this.baseURL, this.username, this.password, Number(id))
-            this.artists.unshift(...artists)
-            this.artists.sort((a, b) => {
-              return collator.compare(transliterator.transform(a.name), transliterator.transform(b.name));
-            })
+            let artist_result = await ND_getArtist(
+              this.baseURL,
+              this.ND_token,
+              this.ND_id,
+              0,
+              100,
+            );
+            if (artist_result) {
+              this.artists.push(...artist_result);
+            }
             break;
           default:
             break;
@@ -761,81 +789,81 @@ struct Index {
     })
   }
 
-  @Builder
-  musicFolderMenu() {
-    Column() {
-      ForEach(this.musicFolders, (musicFolder: MusicFolder, index) => {
-        Button({ type: ButtonType.Normal }) {
-          Row() {
-            Radio({ value: musicFolder.name, group: musicFolder.name, indicatorType: RadioIndicatorType.TICK })
-              .width(this.displayWidth > 1400 ? 20 : 18)
-              .margin({ left: deviceTypeInfo === '2in1' ? 10 : 7 })
-              .checked(this.libraryStates[musicFolder.id])
-              .radioStyle({
-                checkedBackgroundColor: $r('app.color.radio'),
-                indicatorColor: $r('app.color.start_window_background')
-              })
-            Text(musicFolder.name)
-              .width('100%')
-              .layoutWeight(1)
-              .fontSize(this.displayWidth > 1400 ? 20 : 18)
-              .fontWeight(FontWeight.Medium)
-              .padding({ left: deviceTypeInfo === '2in1' ? 0 : 4, right: deviceTypeInfo === '2in1' ? 1 : 5 })
-              .fontColor($r('app.color.font'))
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-          .width('100%')
-        }
-        .height(deviceTypeInfo === '2in1' ? (this.displayWidth > 1400 ? 40 : 35) : 30)
-        .width('100%')
-        .borderRadius(8)
-        .backgroundColor(Color.Transparent)
-        .hitTestBehavior(HitTestMode.Block)
-        .onClick(() => {
-          this.libraryStates[musicFolder.id] = !this.libraryStates[musicFolder.id]
-          this.libraryStatesStr = JSON.stringify(this.libraryStates)
-        })
-      })
-    }
-    .width(deviceTypeInfo === '2in1' ? 200 : 128)
-    .height(deviceTypeInfo === '2in1' ?
-      (this.displayWidth > 1400 ? 40 * this.musicFolders.length : 35 * this.musicFolders.length) :
-      30 * this.musicFolders.length)
-    .alignItems(HorizontalAlign.Start)
-  }
+  // @Builder
+  // musicFolderMenu() {
+  //   Column() {
+  //     ForEach(this.musicFolders, (musicFolder: MusicFolder, index) => {
+  //       Button({ type: ButtonType.Normal }) {
+  //         Row() {
+  //           Radio({ value: musicFolder.name, group: musicFolder.name, indicatorType: RadioIndicatorType.TICK })
+  //             .width(this.displayWidth > 1400 ? 20 : 18)
+  //             .margin({ left: deviceTypeInfo === '2in1' ? 10 : 7 })
+  //             .checked(this.libraryStates[musicFolder.id])
+  //             .radioStyle({
+  //               checkedBackgroundColor: $r('app.color.radio'),
+  //               indicatorColor: $r('app.color.start_window_background')
+  //             })
+  //           Text(musicFolder.name)
+  //             .width('100%')
+  //             .layoutWeight(1)
+  //             .fontSize(this.displayWidth > 1400 ? 20 : 18)
+  //             .fontWeight(FontWeight.Medium)
+  //             .padding({ left: deviceTypeInfo === '2in1' ? 0 : 4, right: deviceTypeInfo === '2in1' ? 1 : 5 })
+  //             .fontColor($r('app.color.font'))
+  //             .maxLines(1)
+  //             .textOverflow({ overflow: TextOverflow.Ellipsis })
+  //         }
+  //         .width('100%')
+  //       }
+  //       .height(deviceTypeInfo === '2in1' ? (this.displayWidth > 1400 ? 40 : 35) : 30)
+  //       .width('100%')
+  //       .borderRadius(8)
+  //       .backgroundColor(Color.Transparent)
+  //       .hitTestBehavior(HitTestMode.Block)
+  //       .onClick(() => {
+  //         this.libraryStates[musicFolder.id] = !this.libraryStates[musicFolder.id]
+  //         this.libraryStatesStr = JSON.stringify(this.libraryStates)
+  //       })
+  //     })
+  //   }
+  //   .width(deviceTypeInfo === '2in1' ? 200 : 128)
+  //   .height(deviceTypeInfo === '2in1' ?
+  //     (this.displayWidth > 1400 ? 40 * this.musicFolders.length : 35 * this.musicFolders.length) :
+  //     30 * this.musicFolders.length)
+  //   .alignItems(HorizontalAlign.Start)
+  // }
 
-  @Builder
-  menuBuilder() {
-    Row() {
-      Button({ type: ButtonType.Normal }) {
-        Image(this.themeIcon)
-          .width(deviceTypeInfo === '2in1' ? 18 : 24)
-          .aspectRatio(1)
-      }
-      .margin({ right: deviceTypeInfo === '2in1' ? 156 : 0 })
-      .width(deviceTypeInfo === '2in1' ? 40 : 48)
-      .aspectRatio(1)
-      .borderRadius(deviceTypeInfo === '2in1' ? 3 : 8)
-      .backgroundColor(Color.Transparent)
-      .onClick(() => {
-        if (this.theme === ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET) {
-          this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT
-          this.themeIcon = $r('app.media.light')
-        } else if (this.theme === 1) {
-          this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_DARK
-          this.themeIcon = $r('app.media.dark')
-        } else {
-          this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET
-          this.themeIcon = $r('app.media.auto')
-        }
-        this.context?.getApplicationContext().setColorMode(this.theme)
-      })
-    }
-    .height('100%')
-    .padding({ right: 10 })
-    .alignItems(VerticalAlign.Center)
-  }
+  // @Builder
+  // menuBuilder() {
+  //   Row() {
+  //     Button({ type: ButtonType.Normal }) {
+  //       Image(this.themeIcon)
+  //         .width(deviceTypeInfo === '2in1' ? 18 : 24)
+  //         .aspectRatio(1)
+  //     }
+  //     .margin({ right: deviceTypeInfo === '2in1' ? 156 : 0 })
+  //     .width(deviceTypeInfo === '2in1' ? 40 : 48)
+  //     .aspectRatio(1)
+  //     .borderRadius(deviceTypeInfo === '2in1' ? 3 : 8)
+  //     .backgroundColor(Color.Transparent)
+  //     .onClick(() => {
+  //       if (this.theme === ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET) {
+  //         this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT
+  //         this.themeIcon = $r('app.media.light')
+  //       } else if (this.theme === 1) {
+  //         this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+  //         this.themeIcon = $r('app.media.dark')
+  //       } else {
+  //         this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET
+  //         this.themeIcon = $r('app.media.auto')
+  //       }
+  //       this.context?.getApplicationContext().setColorMode(this.theme)
+  //     })
+  //   }
+  //   .height('100%')
+  //   .padding({ right: 10 })
+  //   .alignItems(VerticalAlign.Center)
+  // }
 
   @Builder
   bindMenuBuilder() {
@@ -1037,92 +1065,6 @@ struct Index {
     .backgroundColor($r('app.color.bar_background'))
   }
 
-  @Builder
-  titlebar() {
-    Row() {
-      Button({ type: ButtonType.Normal }) {
-        Image($r('app.media.sidebar'))
-          .width(24)
-          .aspectRatio(1)
-      }
-      .width(48)
-      .height(48)
-      .borderRadius(8)
-      .backgroundColor(Color.Transparent)
-      .onClick(async () => {
-        getVerse().then((verse: Verse) => {
-          this.verse = verse
-        })
-        this.uiContext?.animateTo({
-          duration: 300,
-          curve: Curve.EaseOut,
-        }, () => {
-          this.showSidebar = !this.showSidebar
-        })
-      })
-      .visibility(this.sidebarType === SideBarContainerType.Overlay ? Visibility.Visible : Visibility.None)
-
-      Button({ type: ButtonType.Normal }) {
-        Row() {
-          Text("音乐库")
-            .fontSize(this.displayWidth > 1400 ? 20 : 18)
-            .fontColor($r('app.color.font'))
-            .fontWeight(FontWeight.Medium)
-          SymbolGlyph(this.showLibrary ? $r('sys.symbol.arrowtriangle_up_fill') :
-          $r('sys.symbol.arrowtriangle_down_fill'))
-            .margin({ left: this.displayWidth > 1400 ? 10 : 7 })
-            .fontColor([$r('app.color.font')])
-        }
-      }
-      .padding({
-        left: this.displayWidth > 1400 ? 15 : 12,
-        right: this.displayWidth > 1400 ? 15 : 12,
-        top: 5,
-        bottom: 5
-      })
-      .margin({ left: 10 })
-      .borderRadius(8)
-      .backgroundColor($r('app.color.button_selected'))
-      .bindContextMenu(this.showLibrary, this.musicFolderMenu, {
-        borderRadius: 10,
-        backgroundBlurStyle: BlurStyle.COMPONENT_THICK,
-        onDisappear: () => {
-          const keys = Object.keys(this.libraryStates)
-          const allFalse = keys.length > 0 && keys.every(key => this.libraryStates[key] === false)
-          if (keys.length === 0 || allFalse) {
-            this.libraryStates['1'] = true
-            this.libraryStatesStr = JSON.stringify(this.libraryStates)
-          }
-          this.needUpdate = !this.needUpdate
-          this.showLibrary = false;
-        }
-      })
-      .onClick(async () => {
-        if (this.baseURL.length === 0) {
-          this.uiContext!.getPromptAction().showToast({
-            message: '服务器为空！',
-            duration: 500
-          });
-        } else {
-          this.musicFolders = []
-          this.musicFolders = await getMusicFolders(this.baseURL, this.username, this.password)
-          if (this.musicFolders.length === 0) {
-            this.uiContext!.getPromptAction().showToast({
-              message: '获取音乐库失败，请检查网络连接！',
-              duration: 500
-            });
-          } else {
-            this.showLibrary = true
-          }
-        }
-      })
-    }
-    .width("100%")
-    .height('100%')
-    .alignItems(VerticalAlign.Center)
-    .padding({ left: 10 })
-  }
-
   async aboutToDisappear() {
     let path = this.context!.filesDir + '/saveState.json';
     if (this.startPlaying === true) {
@@ -1262,6 +1204,32 @@ struct Index {
         this.verse = verse
       })
     }
+    // login or keep-alive
+    // keep-alive
+    let needLogin = false;
+    if (this.ND_token.length > 0 && this.ND_id.length > 0) {
+      let result = await ND_keepAlive(this.baseURL, this.ND_token, this.ND_id);
+      // may be is expired
+      if (!result) {
+        needLogin = true;
+      }
+    } else {
+      needLogin = true;
+    }
+    // can't login
+    if (this.baseURL.length === 0 || this.username.length===0) {
+      needLogin = false;
+    }
+    // login
+    if (needLogin) {
+      let result = await ND_login(this.baseURL, this.username, this.password);
+      if (result) {
+        this.ND_token = result.token;
+        this.ND_id = result.id;
+      } else {
+        this.uiContext.showAlertDialog({message: "登录失败，请检查网络或者账户密码"})
+      }
+    }
   }
 
   onBackPress() {
@@ -1280,247 +1248,9 @@ struct Index {
     }
     return false
   }
-
   build() {
-    Stack() {
-      SideBarContainer(this.sidebarType) {
-        Column() {
-          Column(){
-            Text(this.verse !== undefined && this.verse.hitokoto !== undefined ? "「" + this.verse.hitokoto.replace(/[。！？!?,，]$/, '') + "」" : "「" + "正在加载中..." + "」")
-              .width('87%')
-              .fontSize(this.displayWidth > 1400 ? 18 : 16)
-              .fontColor($r('app.color.font_secondary'))
-              .fontWeight(FontWeight.Bold)
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .wordBreak(WordBreak.BREAK_ALL)
-
-            Text(this.verse !== undefined && this.verse.from_who !== undefined ? "—— " + (this.verse.from_who !== 'null' ? this.verse.from_who : "佚名") : "—— ")
-              .width('87%')
-              .fontSize(this.displayWidth > 1400 ? 18 : 16)
-              .fontColor($r('app.color.font_secondary'))
-              .fontWeight(FontWeight.Bold)
-              .textAlign(TextAlign.End)
-              .margin({ top: 5 })
-          }
-          .margin({ bottom: 10 })
-
-          Divider()
-            .width('90%')
-            .height(1)
-            .margin({ top: 5, bottom: 5})
-            .color($r('app.color.divider'))
-
-          Column() {
-            Button({ type: ButtonType.Normal }) {
-              Row() {
-                Image($r('app.media.home'))
-                  .width(24)
-                  .aspectRatio(1)
-                  .margin({ right: 10 })
-                Text("首页")
-                  .fontSize(20)
-                  .fontColor($r('app.color.font'))
-              }
-              .width('50%')
-            }
-            .width('100%')
-            .height(50)
-            .borderRadius(10)
-            .backgroundColor(this.nowPage === 0 ? $r('app.color.button_selected') : $r('app.color.content_background'))
-            .onClick(() => {
-              this.uiContext?.animateTo({
-                duration: 300,
-                curve: Curve.EaseOut,
-              }, () => {
-                this.showSidebar = false
-              })
-              this.pageStack.clear()
-              this.nowPage = 0
-            })
-
-            Button({ type: ButtonType.Normal }) {
-              Row() {
-                Image($r('app.media.search'))
-                  .width(24)
-                  .aspectRatio(1)
-                  .margin({ right: 10 })
-                Text("搜索")
-                  .fontSize(20)
-                  .fontColor($r('app.color.font'))
-              }
-              .width('50%')
-            }
-            .width('100%')
-            .height(50)
-            .borderRadius(10)
-            .backgroundColor(this.nowPage === 1 ? $r('app.color.button_selected') : $r('app.color.content_background'))
-            .onClick(() => {
-              this.uiContext?.animateTo({
-                duration: 300,
-                curve: Curve.EaseOut,
-              }, () => {
-                this.showSidebar = false
-              })
-              this.pageStack.clear()
-              this.nowPage = 1
-            })
-
-            Button({ type: ButtonType.Normal }) {
-              Row() {
-                Image($r('app.media.album'))
-                  .width(24)
-                  .aspectRatio(1)
-                  .margin({ right: 10 })
-                Text("专辑")
-                  .fontSize(20)
-                  .fontColor($r('app.color.font'))
-              }
-              .width('50%')
-            }
-            .width('100%')
-            .height(50)
-            .borderRadius(10)
-            .backgroundColor(this.nowPage === 2 ? $r('app.color.button_selected') : $r('app.color.content_background'))
-            .onClick(() => {
-              this.uiContext?.animateTo({
-                duration: 300,
-                curve: Curve.EaseOut,
-              }, () => {
-                this.showSidebar = false
-              })
-              this.pageStack.clear()
-              this.nowPage = 2
-            })
-
-            Button({ type: ButtonType.Normal }) {
-              Row() {
-                Image($r('app.media.artist'))
-                  .width(24)
-                  .aspectRatio(1)
-                  .margin({ right: 10 })
-                Text("艺术家")
-                  .fontSize(20)
-                  .fontColor($r('app.color.font'))
-              }
-              .width('50%')
-            }
-            .width('100%')
-            .height(50)
-            .borderRadius(10)
-            .backgroundColor(this.nowPage === 3 ? $r('app.color.button_selected') : $r('app.color.content_background'))
-            .onClick(() => {
-              this.uiContext?.animateTo({
-                duration: 300,
-                curve: Curve.EaseOut,
-              }, () => {
-                this.showSidebar = false
-              })
-              this.pageStack.clear()
-              this.nowPage = 3
-            })
-
-            Button({ type: ButtonType.Normal }) {
-              Row() {
-                Image($r('app.media.playlist'))
-                  .width(24)
-                  .aspectRatio(1)
-                  .margin({ right: 10 })
-                Text("歌单")
-                  .fontSize(20)
-                  .fontColor($r('app.color.font'))
-              }
-              .width('50%')
-            }
-            .width('100%')
-            .height(50)
-            .borderRadius(10)
-            .backgroundColor(this.nowPage === 4 ? $r('app.color.button_selected') : $r('app.color.content_background'))
-            .onClick(() => {
-              this.uiContext?.animateTo({
-                duration: 300,
-                curve: Curve.EaseOut,
-              }, () => {
-                this.showSidebar = false
-              })
-              this.pageStack.clear()
-              this.nowPage = 4
-            })
-          }
-          .width('90%')
-          .height('auto')
-          .borderRadius(10)
-          .clip(true)
-          .backgroundColor($r('app.color.content_background'))
-
-          Blank()
-
-          Row() {
-            Button({ type: ButtonType.Normal }) {
-              Row() {
-                Image($r('app.media.setting'))
-                  .width(24)
-                  .height(24)
-              }
-            }
-            .width(50)
-            .height(50)
-            .borderRadius(10)
-            .backgroundColor(this.nowPage === 5 ? $r('app.color.button_selected') : $r('app.color.content_background'))
-            .onClick(() => {
-              this.uiContext?.animateTo({
-                duration: 300,
-                curve: Curve.EaseOut,
-              }, () => {
-                this.showSidebar = false
-              })
-              this.pageStack.clear()
-              this.nowPage = 5
-            })
-
-            Button({ type: ButtonType.Normal }) {
-              Row() {
-                Image($r('app.media.info'))
-                  .width(26)
-                  .height(26)
-              }
-            }
-            .width(50)
-            .height(50)
-            .borderRadius(10)
-            .backgroundColor(this.nowPage === 6 ? $r('app.color.button_selected') : $r('app.color.content_background'))
-            .onClick(() => {
-              this.uiContext?.animateTo({
-                duration: 300,
-                curve: Curve.EaseOut,
-              }, () => {
-                this.showSidebar = false
-              })
-              this.pageStack.clear()
-              this.nowPage = 6
-            })
-          }
-          .width('90%')
-          .height('auto')
-          .borderRadius(10)
-          .clip(true)
-          .backgroundColor($r('app.color.content_background'))
-          .justifyContent(FlexAlign.SpaceBetween)
-        }
-        .width('100%')
-        .height('100%')
-        .backgroundColor($r('app.color.content_background'))
-        .padding({
-          top: this.sidebarType === SideBarContainerType.Embed ? this.statusBarHeight + 23 : this.statusBarHeight + 16,
-          bottom: this.sidebarType === SideBarContainerType.Embed ? this.sideBarWidth * 0.05 : this.sideBarWidth * 0.05 + 10
-        })
-        .shadow({
-          radius: this.shadowRadius,
-          color: $r('app.color.sidebarShadow'),
-          offsetX: 0,
-          offsetY: 0
-        })
-
+    Column() {
+      Stack() {
         Stack() {
           Navigation(this.pageStack) {
             Stack() {
@@ -1535,47 +1265,7 @@ struct Index {
 
                 if (this.nowPage === 1) {
                   Column() {
-                    Search_()
-                  }
-                  .height('100%')
-                  .width('100%')
-                }
-
-                if (this.nowPage === 2) {
-                  Column() {
-                    Albums()
-                  }
-                  .height('100%')
-                  .width('100%')
-                }
-
-                if (this.nowPage === 3) {
-                  Column() {
-                    Artists()
-                  }
-                  .height('100%')
-                  .width('100%')
-                }
-
-                if (this.nowPage === 4) {
-                  Column() {
-                    Playlists()
-                  }
-                  .height('100%')
-                  .width('100%')
-                }
-
-                if (this.nowPage === 5) {
-                  Column() {
-                    Setting()
-                  }
-                  .height('100%')
-                  .width('100%')
-                }
-
-                if (this.nowPage === 6) {
-                  Column() {
-                    About()
+                    MyProfile()
                   }
                   .height('100%')
                   .width('100%')
@@ -1598,11 +1288,11 @@ struct Index {
             }
           }
           .mode(NavigationMode.Stack)
-          .title(this.titlebar())
+          // .title(this.titlebar())
           .titleMode(NavigationTitleMode.Mini)
           .hideBackButton(true)
-          .padding({ top: this.statusBarHeight })
-          .menus(this.menuBuilder())
+          // .padding({ top: this.statusBarHeight })
+          // .menus(this.menuBuilder())
           .bindSheet($$this.showMenu, this.bindMenuBuilder, {
             showClose: false,
             height: SheetSize.FIT_CONTENT,
@@ -1610,11 +1300,13 @@ struct Index {
             preferType: SheetType.BOTTOM,
             backgroundColor: $r('app.color.content_background'),
           })
+          .toolbarConfiguration([this.homeTool, this.myProfileTool])
+          .zIndex(this.showPlay? 1 : 3)
 
           if (this.sidebarType === SideBarContainerType.Overlay) {
             Column()
               .width(this.displayWidth)
-              .height(this.showPlay ? '100%' : 85)
+              .height(this.showPlay ? '100%' : 55)
               .justifyContent(FlexAlign.Center)
               .backgroundImage(this.baseURL + this.getCoverUrl + this.auth + `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`)
               .backgroundImageSize(ImageSize.FILL)
@@ -1645,7 +1337,7 @@ struct Index {
                         objectFit: ImageFit.Contain
                       }
                     })
-                      .width(60)
+                      .width(40)
                       .aspectRatio(1)
                       .borderRadius(5)
                       .geometryTransition("cover_overlay")
@@ -1771,6 +1463,7 @@ struct Index {
                 }
                 .opacity(this.showPlay ? 0 : 1)
                 .padding({ left: 15, right: 15, bottom: 5 })
+                .zIndex(4)
                 .onClick(() => {
                   if (this.showPlay === true) {
                     this.showPlay = false
@@ -1805,18 +1498,20 @@ struct Index {
                     })
                 }
                 .opacity(this.showPlay ? 1 : 0)
+                .zIndex(4)
               }
             }
             .width(this.displayWidth)
-            .height(this.showPlay ? '100%' : 85)
+            .height(this.showPlay ? '100%' : 55)
             .justifyContent(FlexAlign.Center)
             .backgroundBlurStyle(this.showPlay ? BlurStyle.NONE : BlurStyle.COMPONENT_THICK)
             .position({
-              bottom: 0,
+              bottom: this.showPlay? 0: 60 ,
               right: 0
             })
             .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.Hidden)
             .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: Curve.Ease, duration: 600 }))
+            .zIndex(5)
           }
 
           Column()
@@ -1824,7 +1519,7 @@ struct Index {
             .height('100%')
             .backgroundColor(Color.Transparent)
             .visibility(this.sidebarType === SideBarContainerType.Overlay && this.showSidebar === true ?
-            Visibility.Visible : Visibility.None)
+              Visibility.Visible : Visibility.None)
             .onTouch(() => {
               this.uiContext?.animateTo({
                 duration: 300,
@@ -1836,263 +1531,31 @@ struct Index {
         }
         .width("100%")
         .height('100%')
+        .zIndex(this.showPlay ? 5 : 2)
       }
       .width("100%")
-      .height('100%')
-      .backgroundColor($r('app.color.content_background'))
-      .sideBarWidth(this.sideBarWidth)
-      .minSideBarWidth(this.sideBarWidth)
-      .maxSideBarWidth(this.sideBarWidth)
-      .showSideBar(this.sidebarType === SideBarContainerType.Embed ? true : this.showSidebar)
-      .showControlButton(false)
-      .autoHide(this.sidebarType === SideBarContainerType.Embed ? false : true)
-      .sideBarPosition(SideBarPosition.Start)
-      .onChange((show: boolean) => {
-        if (show === true && this.sidebarType === SideBarContainerType.Overlay) {
-          this.shadowRadius = 100
-          this.showSidebar = true
-        } else {
-          setTimeout(() => {
-            this.shadowRadius = 0
-            this.showSidebar = false
-          }, 300)
+      .height("100%")
+      .bindContentCover($$this.showStepper, this.stepperBuilder())
+      .onKeyEvent((event?: KeyEvent) => {
+        if (event && event.keyCode === KeyCode.KEYCODE_SPACE && event.type === KeyType.Up) {
+          this.isPlaying = !this.isPlaying
+          if (this.isPlaying === false) {
+            if (this.fadeVolume === true) {
+              this.fadeOut()
+            } else {
+              this.avPlayer!.pause()
+            }
+          } else {
+            if (this.fadeVolume === true) {
+              this.fadeIn()
+            } else {
+              this.avPlayer!.play()
+            }
+          }
         }
       })
+    }.width("100%")
+    .height("100%")
 
-      if (this.sidebarType === SideBarContainerType.Embed) {
-        Column()
-          .width(this.showPlay ? this.displayWidth : this.displayWidth - this.sideBarWidth)
-          .height(this.showPlay ? '100%' : 85)
-          .justifyContent(FlexAlign.Center)
-          .backgroundImage(this.baseURL + this.getCoverUrl + this.auth +
-            `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`)
-          .backgroundImageSize(ImageSize.FILL)
-          .backgroundBlurStyle(BlurStyle.BACKGROUND_ULTRA_THICK)
-          .backgroundBrightness({
-            rate: this.context!.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK ? 0.2 : 0.5,
-            lightUpDegree: this.context!.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK ? 0.1 :
-              0.5
-          })
-          .opacity(this.showPlay ? 1 : 0)
-          .position({
-            bottom: 0,
-            right: 0
-          })
-          .visibility(this.startPlaying === true && this.sidebarType === SideBarContainerType.Embed ?
-          Visibility.Visible : Visibility.Hidden)
-          .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: Curve.Ease, duration: 600 }))
-
-        Column() {
-          if (this.showPlay === false) {
-            Row() {
-              Row() {
-                ImageKnifeComponent({
-                  imageKnifeOption: {
-                    loadSrc: this.baseURL + this.getCoverUrl + this.auth + `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`,
-                    placeholderSrc: $rawfile('nocover.png'),
-                    errorholderSrc:$rawfile('nocover.png') ,
-                    objectFit: ImageFit.Contain
-                  }
-                })
-                  .width(60)
-                  .aspectRatio(1)
-                  .borderRadius(5)
-                  .geometryTransition("cover_embed")
-                Column() {
-                  Marquee({
-                    start: true,
-                    step: 3,
-                    src: this.nowPlayingSong?.title
-                  })
-                    .fontSize(18)
-                    .fontColor($r('app.color.font'))
-                  Marquee({
-                    start: true,
-                    step: 3,
-                    src: this.nowPlayingSong?.artist + " - " + this.nowPlayingSong?.album
-                  })
-                    .fontSize(15)
-                    .fontColor($r('app.color.font_secondary'))
-                    .margin({ top: 5 })
-                }
-                .margin({ left: 10, right: 10 })
-                .alignItems(HorizontalAlign.Start)
-                .width('100%')
-                .layoutWeight(1)
-              }
-              .width('100%')
-              .layoutWeight(1)
-              .justifyContent(FlexAlign.Start)
-
-              Row() {
-                Button({ type: ButtonType.Circle }) {
-                  Image($r('app.media.prev'))
-                    .width(30)
-                    .height(30)
-                }
-                .width(35)
-                .height(35)
-                .backgroundColor(Color.Transparent)
-                .onClick(async () => {
-                  await this.avPlayer!.reset();
-                  if (this.nowPlayingIndex === 0) {
-                    this.nowPlayingIndex = this.nowPlayingList.length - 1
-                  } else {
-                    this.nowPlayingIndex -= 1
-                  }
-                  this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-                  this.nowPlayingLyrics =
-                    await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-                  if (this.nowPlayingLyrics !== undefined) {
-                    this.groupLyrics()
-                  }
-                  this.avPlayer!.url =
-                    this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
-                })
-
-                Stack() {
-                  Progress({
-                    value: this.nowPlayedTime / this.nowPlayingSong?.duration! * 100,
-                    total: 100,
-                    type: ProgressType.Ring
-                  })
-                    .width(45)
-                    .height(45)
-                    .color($r('app.color.progress'))
-                    .backgroundColor($r('app.color.progress_background'))
-                    .style({
-                      strokeWidth: 3
-                    })
-
-                  Button({ type: ButtonType.Circle }) {
-                    Image(this.isPlaying === true ? $r('app.media.play') : $r('app.media.pause'))
-                      .width(25)
-                      .height(25)
-                  }
-                  .width(45)
-                  .height(45)
-                  .backgroundColor(Color.Transparent)
-                  .onClick(() => {
-                    this.isPlaying = !this.isPlaying
-                    if (this.isPlaying === false) {
-                      if (this.fadeVolume === true) {
-                        this.fadeOut()
-                      } else {
-                        this.avPlayer!.pause()
-                      }
-                    } else {
-                      if (this.fadeVolume === true) {
-                        this.fadeIn()
-                      } else {
-                        this.avPlayer!.play()
-                      }
-                    }
-                  })
-                }
-
-                Button({ type: ButtonType.Circle }) {
-                  Image($r('app.media.next'))
-                    .width(30)
-                    .height(30)
-                }
-                .width(35)
-                .height(35)
-                .backgroundColor(Color.Transparent)
-                .onClick(async () => {
-                  await this.avPlayer!.reset();
-                  if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
-                    this.nowPlayingIndex = 0
-                  } else {
-                    this.nowPlayingIndex += 1
-                  }
-                  this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-                  this.nowPlayingLyrics =
-                    await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-                  if (this.nowPlayingLyrics !== undefined) {
-                    this.groupLyrics()
-                  }
-                  this.avPlayer!.url =
-                    this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
-                })
-              }
-              .width(125)
-              .justifyContent(FlexAlign.SpaceBetween)
-            }
-            .padding({ left: 15, right: 15, bottom: 5 })
-            .onClick(() => {
-              if (this.showPlay === true) {
-                this.showPlay = false
-              }
-              this.getUIContext()?.animateTo({
-                duration: 600,
-                curve: Curve.Friction
-              }, () => {
-                this.showPlay = true
-              })
-            })
-          } else {
-            Column() {
-              Play()
-                .onKeyEvent((event?: KeyEvent) => {
-                  if (event && event.keyCode === KeyCode.KEYCODE_SPACE && event.type === KeyType.Up) {
-                    this.isPlaying = !this.isPlaying
-                    if (this.isPlaying === false) {
-                      if (this.fadeVolume === true) {
-                        this.fadeOut()
-                      } else {
-                        this.avPlayer!.pause()
-                      }
-                    } else {
-                      if (this.fadeVolume === true) {
-                        this.fadeIn()
-                      } else {
-                        this.avPlayer!.play()
-                      }
-                    }
-                  }
-                })
-            }
-          }
-        }
-        .width(this.showPlay ? this.displayWidth : this.displayWidth - this.sideBarWidth)
-        .height(this.showPlay ? '100%' : 85)
-        .justifyContent(FlexAlign.Center)
-        .backgroundBlurStyle(this.showPlay ? BlurStyle.NONE : BlurStyle.COMPONENT_THICK)
-        .position({
-          bottom: 0,
-          right: 0
-        })
-        .visibility(this.startPlaying === true && this.sidebarType === SideBarContainerType.Embed ? Visibility.Visible :
-        Visibility.Hidden)
-        .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: Curve.Ease, duration: 600 }))
-      }
-
-      Column()
-        .width('100%')
-        .height('100%')
-        .backgroundColor(Color.Transparent)
-        .visibility(this.showLibrary === true ? Visibility.Visible : Visibility.None)
-    }
-    .width("100%")
-    .height('100%')
-    .bindContentCover($$this.showStepper, this.stepperBuilder())
-    .onKeyEvent((event?: KeyEvent) => {
-      if (event && event.keyCode === KeyCode.KEYCODE_SPACE && event.type === KeyType.Up) {
-        this.isPlaying = !this.isPlaying
-        if (this.isPlaying === false) {
-          if (this.fadeVolume === true) {
-            this.fadeOut()
-          } else {
-            this.avPlayer!.pause()
-          }
-        } else {
-          if (this.fadeVolume === true) {
-            this.fadeIn()
-          } else {
-            this.avPlayer!.play()
-          }
-        }
-      }
-    })
   }
 }
