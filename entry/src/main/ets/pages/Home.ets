@@ -2,7 +2,6 @@ import { curves} from '@kit.ArkUI';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { ImageKnifeComponent } from '@ohos/imageknife'
 import { Album, Artist, MusicFolder, Song, SearchResult} from '../utils/Interface';
-import {search} from "../utils/Api";
 
 let deviceTypeInfo: string = deviceInfo.deviceType;
 
@@ -39,7 +38,7 @@ export default struct Home {
   @Consume musicFolders: MusicFolder[]
   @Consume searchSongs: Song[]
   @Consume searchAlbums: Album[]
-  @Consume searchArtists: Artist[] = []
+  @Consume searchArtists: Artist[];
   private recentAlbumsScroller: Scroller = new Scroller
   private newestAlbumsScroller: Scroller = new Scroller
   private frequentAlbumsScroller: Scroller = new Scroller

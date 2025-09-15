@@ -6,7 +6,6 @@ import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { PromptAction } from '@kit.ArkUI';
 import { ImageKnifeComponent } from '@ohos/imageknife'
-// import router from '@ohos.router';
 
 
 // interface SearchParams {

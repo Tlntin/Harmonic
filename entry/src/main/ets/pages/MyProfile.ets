@@ -36,7 +36,7 @@ export default struct MyProfile {
   @Consume nowPlayingLyrics: StructuredLyric | undefined
   @Consume nowPlayingLyricsByGroup: Line[][]
   @Consume nowPlayingList: Song[]
-  @Consume playlists: Playlist[] = []
+  @Consume playlists: Playlist[]
   @Consume playlist: Playlist | undefined
   @Consume nowPlayingListOriginal: Song[]
   @Consume nowPlayingIndex: number
@@ -132,7 +132,6 @@ export default struct MyProfile {
             Button("当前歌单")
               .padding({ left: 5, right: 5 })
               .backgroundColor(Color.Transparent)
-              .fontColor("#000000")
               .fontSize(20)
             Blank()
             Button() {
@@ -206,7 +205,6 @@ export default struct MyProfile {
           Column() {
             Text("没有歌单")
               .fontSize(32)
-              .fontColor($r('app.color.font'))
           }
           .width('100%')
           .justifyContent(FlexAlign.Center)
