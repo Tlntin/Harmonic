@@ -174,8 +174,8 @@ export interface LyricsList {
 }
 
 export interface StructuredLyric {
-  displayArtist: string;
-  displayTitle: string;
+  displayArtist?: string;
+  displayTitle?: string;
   lang: string;
   line: Line[];
   synced: boolean;
@@ -221,19 +221,6 @@ export interface SearchResult {
   song?: Song[];
   album?: Album[];
   artist?: Artist[];
-}
-
-export interface SaveState {
-  nowPlayingSong: Song | undefined;
-  nowPlayingLyrics: StructuredLyric | undefined;
-  nowPlayingLyricsByGroup: Line[][];
-  nowPlayingList: Song[];
-  nowPlayingListOriginal: Song[];
-  nowPlayingIndex: number;
-  lyricsIndex: number;
-  startPlaying: boolean;
-  isPlaying: boolean;
-  nowPlayedTime: number;
 }
 
 export interface Verse {

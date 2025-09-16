@@ -1,3 +1,5 @@
+import {StructuredLyric, Line} from "./Interface"
+
 export interface ND_LoginResult {
   id: string,
   isAdmin: boolean,
@@ -69,6 +71,7 @@ export interface ND_Song {
   hasCoverArt: boolean,
   trackNumber: number,
   discNumber: number,
+  starred?: boolean;
   year: number,
   date: string,
   originalYear: number,
@@ -97,4 +100,18 @@ export interface ND_Song {
   birthTime: string,
   createdAt: string,
   updatedAt: string,
+}
+
+
+export interface SaveState {
+  nowPlayingSong: ND_Song | undefined;
+  nowPlayingLyrics: StructuredLyric | undefined;
+  nowPlayingLyricsByGroup: Line[][];
+  nowPlayingList: ND_Song[];
+  nowPlayingListOriginal: ND_Song[];
+  nowPlayingIndex: number;
+  lyricsIndex: number;
+  startPlaying: boolean;
+  isPlaying: boolean;
+  nowPlayedTime: number;
 }

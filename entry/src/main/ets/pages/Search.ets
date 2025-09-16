@@ -138,6 +138,18 @@ export default struct Search_ {
     }
   }
 
+  formatTime(seconds: number) {
+    let hours = Math.floor(seconds / 3600);
+    let minutes = Math.floor((seconds % 3600) / 60);
+    let secs = Math.floor(seconds % 60);
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+  }
+
   async aboutToAppear() {
     this.needUpdate = !this.needUpdate
     this.promptAction = this.getUIContext().getPromptAction();
@@ -253,10 +265,28 @@ export default struct Search_ {
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                     }
-                    .width('100%')
+                    .width('50%')
                     .layoutWeight(1)
                     .margin({ left: 10 })
                     .alignItems(HorizontalAlign.Start)
+
+                    Column() {
+                      Text(this.formatTime(song.duration))
+                        .fontSize(18)
+                        .fontColor($r('app.color.font'))
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      Text(`${song.suffix} | ${song.bitRate}kbps`)
+                        .fontSize(12)
+                        .fontColor($r('app.color.font_secondary'))
+                        .margin({ top: 5 })
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    }
+                    .width('50%')
+                    .layoutWeight(1)
+                    .margin({ left: 10 })
+                    .alignItems(HorizontalAlign.End)
                   }
                   .width('100%')
                   .height('100%')

@@ -106,3 +106,30 @@ export async function ND_getSongs(
     return null;
   }
 }
+
+export async function ND_getSong(
+  baseURL: string,
+  token: string,
+  id: string,
+  song_id: number
+) {
+  try {
+    const response: AxiosResponse =
+      await axios.get<string, AxiosResponse<string>>(baseURL + `/api/song/${song_id}`, {
+        headers:{
+          "x-nd-authorization": `Bearer ${token}`,
+          "x-nd-client-unique-id": id
+        }
+      })
+    if (response?.data?.error) {
+      console.error(`/navdirome_getSong/ error:${JSON.stringify(response?.data?.error)}`)
+      return null;
+    } else {
+      let result: ND_Song = response.data;
+      return result;
+    }
+  } catch (error){
+    console.error(`/navdirome_getSongs/ error:${JSON.stringify(error)}`)
+    return null;
+  }
+}

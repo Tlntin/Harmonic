@@ -13,7 +13,7 @@ import {
   getAlbumList,
   getCover,
   getFrequentAlbums,
-  getIndexes,
+  // getIndexes,
   getLyrics,
   getMusicFolders,
   getNewestAlbums,
@@ -21,7 +21,7 @@ import {
   getPlaylists,
   getRandomAlbums,
   getRecentAlbums,
-  getSong,
+  // getSong,
   getStarredAlbums,
   getStarredArtists,
   getVerse,
@@ -30,10 +30,10 @@ import {
   unstar,
   updatePlaylist
 } from '../utils/Api';
-import { Album, Artist, Line, MusicFolder, Playlist, SaveState, Song, StructuredLyric,
-  Verse } from '../utils/Interface';
+import { Album, Artist, Line, MusicFolder, Playlist, // SaveState, Song,
+  StructuredLyric, Verse } from '../utils/Interface';
 import {ND_login, ND_keepAlive, ND_getArtist} from "../utils/ND_Api";
-import {ND_Artist} from "../utils/ND_Interface"
+import {ND_Artist, ND_Song, SaveState} from "../utils/ND_Interface"
 
 import Play from './Play';
 import selectPlaylistBuilder from './dialogs/SelectPlaylist';
@@ -72,7 +72,7 @@ struct Index {
   @Provide starredArtists: Artist[] = []
   @Provide artists: ND_Artist[] = []
   @Provide albums: Album[] = []
-  @Provide songs: Song[] = []
+  @Provide songs: ND_Song[] = []
   @Provide playlists: Playlist[] = []
   @Provide selectedPlaylists: boolean[] = []
   @Provide showProgress: boolean = false
@@ -86,11 +86,11 @@ struct Index {
   @Provide getCoverUrl: string = '/rest/getCoverArt'
   @Provide nowPage: number = 0
   @Provide serverStatus: boolean = true
-  @Provide nowPlayingSong: Song | undefined = undefined
+  @Provide nowPlayingSong: ND_Song | undefined = undefined
   @Provide nowPlayingLyrics: StructuredLyric | undefined = undefined
   @Provide nowPlayingLyricsByGroup: Line[][] = []
-  @Provide nowPlayingList: Song[] = []
-  @Provide nowPlayingListOriginal: Song[] = []
+  @Provide nowPlayingList: ND_Song[] = []
+  @Provide nowPlayingListOriginal: ND_Song[] = []
   @Provide nowPlayingIndex: number = 0
   @Provide lyricsIndex: number = 0
   @Provide startPlaying: boolean = false
@@ -100,15 +100,15 @@ struct Index {
   @Provide showDevice: boolean = false
   @Provide showCover: boolean = true
   @Provide showMenu: boolean = false
-  @Provide longPressSong: Song | undefined = undefined
+  @Provide longPressSong: ND_Song | undefined = undefined
   @Provide longPressIndex: number = -1
   @Provide sleepTime: number = 0
   @Provide selectedIndex: number = 0
   @Provide album: Album | undefined = undefined
   @Provide artist: Artist | undefined = undefined
   @Provide playlist: Playlist | undefined = undefined
-  @Provide discs: Song[][] = []
-  @Provide starredSongs: Song[] = []
+  @Provide discs: ND_Song[][] = []
+  @Provide starredSongs: ND_Song[] = []
   @Provide addOrDelete: boolean = true
   @Provide playModeIcon: Resource = $r('app.media.loop')
   @Provide avPlayer: media.AVPlayer | undefined = undefined
@@ -119,7 +119,7 @@ struct Index {
   @Provide sliderValue: number = 0
   @Provide sliderMoving: boolean = false
   @Provide musicFolders: MusicFolder[] = []
-  @Provide searchSongs: Song[] = []
+  @Provide searchSongs: ND_Song[] = []
   @Provide searchAlbums: Album[] = []
   @Provide searchArtists: Artist[] = []
   @Provide showLibrary: boolean = false
@@ -448,11 +448,12 @@ struct Index {
             message: '收藏成功！',
             duration: 500
           });
-          let tmp_song: Song | undefined =
-            await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-          if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-            this.nowPlayingSong!.starred = tmp_song.starred
-          }
+          // let tmp_song: Song | undefined =
+          //   await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
+          // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
+          //   this.nowPlayingSong!.starred = tmp_song.starred
+          // }
+          this.nowPlayingSong!.starred = true;
           if (this.isPlaying === true) {
             await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
           } else {
@@ -550,8 +551,8 @@ struct Index {
           });
           await this.setSessionInfo()
           await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE)
-          if (this.audioNormalization === true && this.nowPlayingSong!.replayGain?.trackGain !== undefined) {
-            this.avPlayer!.setVolume((100 + this.nowPlayingSong!.replayGain!.trackGain) / 100)
+          if (this.audioNormalization === true && this.nowPlayingSong!.rgTrackGain !== undefined) {
+            this.avPlayer!.setVolume((100 + (this.nowPlayingSong!.rgTrackGain as number)) / 100)
           }
           if (this.startPlayTime !== 0) {
             this.avPlayer!.seek(this.startPlayTime * 1000)
@@ -1036,11 +1037,12 @@ struct Index {
               message: '收藏成功！',
               duration: 500
             });
-            let tmp_song: Song | undefined =
-              await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
-            if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-              this.longPressSong!.starred = tmp_song.starred
-            }
+            // let tmp_song: Song | undefined =
+            //   await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
+            // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
+            //   this.longPressSong!.starred = tmp_song.starred
+            // }
+            this.longPressSong!.starred = true;
             if (this.startPlaying === true && this.longPressSong!.id === this.nowPlayingSong!.id) {
               if (this.isPlaying === true) {
                 await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)

@@ -11,6 +11,11 @@
       "buildFunction": "SearchBuilder"
     },
     {
+      "name": "Songs",
+      "pageSourceFile": "src/main/ets/pages/Songs.ets",
+      "buildFunction": "SongsBuilder"
+    },
+    {
       "name": "MySetting",
       "pageSourceFile": "src/main/ets/pages/Setting.ets",
       "buildFunction": "SettingBuilder"

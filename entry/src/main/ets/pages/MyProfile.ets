@@ -96,7 +96,9 @@ export default struct MyProfile {
               .width(30)
             Text("全部音乐")
               .fontSize(16)
-          }
+          }.onClick(async ()=>{
+            this.pageStack.pushPathByName("Songs", null);
+          })
 
           Column() {
             Image($r("app.media.ic_gallery_continuous_shooting"))
@@ -129,9 +131,8 @@ export default struct MyProfile {
 
         Column() {
           Row() {
-            Button("当前歌单")
+            Text("当前歌单")
               .padding({ left: 5, right: 5 })
-              .backgroundColor(Color.Transparent)
               .fontSize(20)
             Blank()
             Button() {
@@ -149,7 +150,6 @@ export default struct MyProfile {
           List() {
             ForEach(this.playlists, (playlist: Playlist, index) => {
               ListItem() {
-                // Button({ type: ButtonType.Normal }) {
                 Column() {
                   Row() {
                     Column() {
@@ -185,12 +185,6 @@ export default struct MyProfile {
                 }
                 .width("100%")
                 .height(50)
-                // }
-                // .width('90%')
-                // .height(50)
-                // .borderRadius(10)
-                // .backgroundColor(Color.Transparent)
-                // .padding({ left: 20, right: 20 })
               }
             })
           }
@@ -212,7 +206,6 @@ export default struct MyProfile {
         }
         .width("90%")
         .margin({ top: 10 })
-        // .padding({left: 20, right: 20})
         .padding({
           left: 10,
           right: 10,
@@ -224,11 +217,8 @@ export default struct MyProfile {
 
         Column() {
           Row() {
-            // Button() {
             Image(this.themeIcon)
               .size({ width: 30, height: 30 })
-            //    .backgroundColor("#FFFFFF")
-            //}
             Text("主题")
               .fontSize(20)
               .margin({ left: 10 })
@@ -252,11 +242,8 @@ export default struct MyProfile {
           })
           Divider()
           Row() {
-            // Button() {
             Image($r("app.media.setting"))
               .size({ width: 30, height: 30 })
-            //    .backgroundColor("#FFFFFF")
-            //}
             Text("设置")
               .fontSize(20)
               .margin({ left: 10 })
