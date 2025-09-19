@@ -1,6 +1,6 @@
 // refer document: https://music.aqzscn.cn/docs/notes/services/navidrome
-import axios, { AxiosResponse } from '@ohos/axios'
-import {ND_LoginResult, ND_Artist, ND_Song} from "./ND_Interface"
+import axios, { AxiosRequestHeaders, AxiosResponse } from '@ohos/axios'
+import {ND_LoginResult, ND_Artist, ND_Song, ND_getSongsResult} from "./ND_Interface"
 
 
 export async function ND_login(baseURL: string, username: string, passport: string): Promise<ND_LoginResult | null> {
@@ -85,21 +85,32 @@ export async function ND_getSongs(
   _end: number,
   _order: "DESC" | "ASC" = "ASC",
   _sort: "random" | "createdAt" | "max_year" | "play_count" | "play_date" | "title" | "album" | "rating" | string = "title"
-) {
+): Promise<ND_getSongsResult | null>{
+  let url = baseURL + "/api/song?" + `_start=${_start}&_end=${_end}&_order=${_order}&_sort=${_sort}`
+  // console.log(`==/navdirome_getSongs/ url: ${url} id: ${id} token: ${token}`)
   try {
     const response: AxiosResponse =
-      await axios.get<string, AxiosResponse<string>>(baseURL + "/api/song?" + `_start=${_start}&_end=${_end}&_order=${_order}&_sort=${_sort}}`, {
+      await axios.get<string, AxiosResponse<string>>(url, {
         headers:{
           "x-nd-authorization": `Bearer ${token}`,
           "x-nd-client-unique-id": id
         }
       })
+    console.log(`==/navdirome_getSongs/ reponse head: ${JSON.stringify(response?.headers)}`)
     if (response?.data?.error) {
-      console.error(`/navdirome_getSongs/ error:${JSON.stringify(response?.data?.error)}`)
+      console.error(`==/navdirome_getSongs/ error:${JSON.stringify(response?.data?.error)}`)
       return null;
     } else {
-      let results: Array<ND_Song> = response.data;
-      return results;
+      const headers = response.headers as AxiosRequestHeaders;
+      let songCountStr = headers?.get("x-total-count")
+      let songCount = 0;
+      if (songCountStr) {
+        songCount = parseInt(String(songCountStr), 10)
+      }
+      console.log(`== song total conut is ${songCount}`);
+      let songs: Array<ND_Song> = response.data;
+      // console.log(`==/navdirome_getSongs/ songs: ${JSON.stringify(songs)}`)
+      return {songs, songCount};
     }
   } catch (error){
     console.error(`/navdirome_getSongs/ error:${JSON.stringify(error)}`)

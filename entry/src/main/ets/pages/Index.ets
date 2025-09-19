@@ -12,15 +12,15 @@ import CryptoJS from '@ohos/crypto-js';
 import {
   getAlbumList,
   getCover,
-  getFrequentAlbums,
+  // getFrequentAlbums,
   // getIndexes,
   getLyrics,
   getMusicFolders,
-  getNewestAlbums,
+  // getNewestAlbums,
   getPlaylist,
   getPlaylists,
   getRandomAlbums,
-  getRecentAlbums,
+  // getRecentAlbums,
   // getSong,
   getStarredAlbums,
   getStarredArtists,
@@ -32,7 +32,7 @@ import {
 } from '../utils/Api';
 import { Album, Artist, Line, MusicFolder, Playlist, // SaveState, Song,
   StructuredLyric, Verse } from '../utils/Interface';
-import {ND_login, ND_keepAlive, ND_getArtist} from "../utils/ND_Api";
+import {ND_login, ND_keepAlive, ND_getArtist, ND_getSongs} from "../utils/ND_Api";
 import {ND_Artist, ND_Song, SaveState} from "../utils/ND_Interface"
 
 import Play from './Play';
@@ -64,9 +64,10 @@ struct Index {
   @State statusBarHeight: number = 0;
   @State shadowRadius: number = 0;
   @Provide showSidebar: boolean = false;
-  @Provide recentAlbums: Album[] = []
-  @Provide newestAlbums: Album[] = []
-  @Provide frequentAlbums: Album[] = []
+  @Provide recentSongs: ND_Song[] = []
+  @Provide newestSongs: ND_Song[] = []
+  // @Provide frequentAlbums: Album[] = []
+  @Provide frequentSongs: ND_Song[] = []
   @Provide randomAlbums: Album[] = []
   @Provide starredAlbums: Album[] = []
   @Provide starredArtists: Artist[] = []
@@ -79,6 +80,7 @@ struct Index {
   @StorageLink('baseURL') baseURL: string = ''
   @StorageLink('username') @Watch('getAuth') username: string = ''
   @StorageLink('password') @Watch('getAuth') password: string = ''
+  @StorageLink('songCount') songCount: number = 0
   @Provide salt: string = 'abcdef'
   @Provide version: string = '1.16.1'
   @Provide client: string = 'Harmonic'
@@ -662,9 +664,9 @@ struct Index {
   async updatePage() {
     switch (this.nowPage) {
       case 0:
-        this.recentAlbums = []
-        this.newestAlbums = []
-        this.frequentAlbums = []
+        this.recentSongs = []
+        this.newestSongs = []
+        this.frequentSongs = []
         this.randomAlbums = []
         this.starredAlbums = []
         this.starredArtists = []
@@ -711,12 +713,21 @@ struct Index {
         }
         switch (this.nowPage) {
           case 0:
-            let recentAlbums = await getRecentAlbums(this.baseURL, this.username, this.password, Number(id))
-            this.recentAlbums.unshift(...recentAlbums)
-            let newestAlbums = await getNewestAlbums(this.baseURL, this.username, this.password, Number(id))
-            this.newestAlbums.unshift(...newestAlbums)
-            let frequentAlbums = await getFrequentAlbums(this.baseURL, this.username, this.password, Number(id))
-            this.frequentAlbums.unshift(...frequentAlbums)
+            let result1 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 50, "DESC", "play_date");
+            if (result1) {
+              this.songCount = result1.songCount;
+              this.recentSongs.push(...result1.songs);
+            }
+            let result2 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 50, "DESC", "createdAt");
+            if (result2) {
+              this.songCount = result2.songCount;
+              this.newestSongs.push(...result2.songs);
+            }
+            let result3 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 50, "DESC", "play_count");
+            if (result3) {
+              this.songCount = result3.songCount;
+              this.frequentSongs.push(...result3.songs);
+            }
             let randomAlbums = await getRandomAlbums(this.baseURL, this.username, this.password, Number(id))
             this.randomAlbums.unshift(...randomAlbums)
             let starredAlbums = await getStarredAlbums(this.baseURL, this.username, this.password, Number(id))
@@ -755,116 +766,6 @@ struct Index {
     }
     this.showProgress = false
   }
-
-  @Builder
-  stepperBuilder() {
-    Stepper() {
-      StepperItem() {
-        Column() {
-          Image($rawfile('initialize.gif'))
-            .height('100%')
-            .layoutWeight(1)
-            .borderRadius(14)
-            .margin({ bottom: 20 })
-
-          Text("　　开始使用前，请先到侧边栏\u2192设置\u2192服务器设置中添加服务器。")
-            .fontSize(18)
-            .fontColor($r('app.color.font'))
-        }
-        .width('100%')
-        .height('100%')
-        .borderRadius(20)
-        .padding(20)
-        .justifyContent(FlexAlign.SpaceBetween)
-        .backgroundColor($r('app.color.bar_background'))
-      }
-      .width('100%')
-      .height('100%')
-      .padding({ top: deviceTypeInfo === '2in1' ? 55 : this.statusBarHeight + 15, left: 20, right: 20})
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor($r('app.color.content_background'))
-    .onFinish(() => {
-      this.showStepper = false
-    })
-  }
-
-  // @Builder
-  // musicFolderMenu() {
-  //   Column() {
-  //     ForEach(this.musicFolders, (musicFolder: MusicFolder, index) => {
-  //       Button({ type: ButtonType.Normal }) {
-  //         Row() {
-  //           Radio({ value: musicFolder.name, group: musicFolder.name, indicatorType: RadioIndicatorType.TICK })
-  //             .width(this.displayWidth > 1400 ? 20 : 18)
-  //             .margin({ left: deviceTypeInfo === '2in1' ? 10 : 7 })
-  //             .checked(this.libraryStates[musicFolder.id])
-  //             .radioStyle({
-  //               checkedBackgroundColor: $r('app.color.radio'),
-  //               indicatorColor: $r('app.color.start_window_background')
-  //             })
-  //           Text(musicFolder.name)
-  //             .width('100%')
-  //             .layoutWeight(1)
-  //             .fontSize(this.displayWidth > 1400 ? 20 : 18)
-  //             .fontWeight(FontWeight.Medium)
-  //             .padding({ left: deviceTypeInfo === '2in1' ? 0 : 4, right: deviceTypeInfo === '2in1' ? 1 : 5 })
-  //             .fontColor($r('app.color.font'))
-  //             .maxLines(1)
-  //             .textOverflow({ overflow: TextOverflow.Ellipsis })
-  //         }
-  //         .width('100%')
-  //       }
-  //       .height(deviceTypeInfo === '2in1' ? (this.displayWidth > 1400 ? 40 : 35) : 30)
-  //       .width('100%')
-  //       .borderRadius(8)
-  //       .backgroundColor(Color.Transparent)
-  //       .hitTestBehavior(HitTestMode.Block)
-  //       .onClick(() => {
-  //         this.libraryStates[musicFolder.id] = !this.libraryStates[musicFolder.id]
-  //         this.libraryStatesStr = JSON.stringify(this.libraryStates)
-  //       })
-  //     })
-  //   }
-  //   .width(deviceTypeInfo === '2in1' ? 200 : 128)
-  //   .height(deviceTypeInfo === '2in1' ?
-  //     (this.displayWidth > 1400 ? 40 * this.musicFolders.length : 35 * this.musicFolders.length) :
-  //     30 * this.musicFolders.length)
-  //   .alignItems(HorizontalAlign.Start)
-  // }
-
-  // @Builder
-  // menuBuilder() {
-  //   Row() {
-  //     Button({ type: ButtonType.Normal }) {
-  //       Image(this.themeIcon)
-  //         .width(deviceTypeInfo === '2in1' ? 18 : 24)
-  //         .aspectRatio(1)
-  //     }
-  //     .margin({ right: deviceTypeInfo === '2in1' ? 156 : 0 })
-  //     .width(deviceTypeInfo === '2in1' ? 40 : 48)
-  //     .aspectRatio(1)
-  //     .borderRadius(deviceTypeInfo === '2in1' ? 3 : 8)
-  //     .backgroundColor(Color.Transparent)
-  //     .onClick(() => {
-  //       if (this.theme === ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET) {
-  //         this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT
-  //         this.themeIcon = $r('app.media.light')
-  //       } else if (this.theme === 1) {
-  //         this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_DARK
-  //         this.themeIcon = $r('app.media.dark')
-  //       } else {
-  //         this.theme = ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET
-  //         this.themeIcon = $r('app.media.auto')
-  //       }
-  //       this.context?.getApplicationContext().setColorMode(this.theme)
-  //     })
-  //   }
-  //   .height('100%')
-  //   .padding({ right: 10 })
-  //   .alignItems(VerticalAlign.Center)
-  // }
 
   @Builder
   bindMenuBuilder() {
@@ -1067,6 +968,31 @@ struct Index {
     .backgroundColor($r('app.color.bar_background'))
   }
 
+  async loginOrKeepAlive() {
+    // login or keep-alive
+    // keep-alive
+    let needLogin = false;
+    if (this.ND_token.length > 0 && this.ND_id.length > 0) {
+      let result = await ND_keepAlive(this.baseURL, this.ND_token, this.ND_id);
+      // may be is expired
+      if (!result) {
+        needLogin = true;
+      }
+    } else {
+      needLogin = true;
+    }
+    // login
+    if (needLogin) {
+      let result = await ND_login(this.baseURL, this.username, this.password);
+      if (result) {
+        this.ND_token = result.token;
+        this.ND_id = result.id;
+      } else {
+        this.getUIContext().showAlertDialog({message: "登录失败，请检查网络或者账户密码"})
+      }
+    }
+  }
+
   async aboutToDisappear() {
     let path = this.context!.filesDir + '/saveState.json';
     if (this.startPlaying === true) {
@@ -1207,31 +1133,7 @@ struct Index {
       })
     }
     // login or keep-alive
-    // keep-alive
-    let needLogin = false;
-    if (this.ND_token.length > 0 && this.ND_id.length > 0) {
-      let result = await ND_keepAlive(this.baseURL, this.ND_token, this.ND_id);
-      // may be is expired
-      if (!result) {
-        needLogin = true;
-      }
-    } else {
-      needLogin = true;
-    }
-    // can't login
-    if (this.baseURL.length === 0 || this.username.length===0) {
-      needLogin = false;
-    }
-    // login
-    if (needLogin) {
-      let result = await ND_login(this.baseURL, this.username, this.password);
-      if (result) {
-        this.ND_token = result.token;
-        this.ND_id = result.id;
-      } else {
-        this.uiContext.showAlertDialog({message: "登录失败，请检查网络或者账户密码"})
-      }
-    }
+    await this.loginOrKeepAlive();
   }
 
   onBackPress() {
@@ -1537,7 +1439,6 @@ struct Index {
       }
       .width("100%")
       .height("100%")
-      .bindContentCover($$this.showStepper, this.stepperBuilder())
       .onKeyEvent((event?: KeyEvent) => {
         if (event && event.keyCode === KeyCode.KEYCODE_SPACE && event.type === KeyType.Up) {
           this.isPlaying = !this.isPlaying

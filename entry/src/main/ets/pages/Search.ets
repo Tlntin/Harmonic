@@ -229,29 +229,21 @@ export default struct Search_ {
         Scroll() {
           Column() {
             Column() {
-              Text("歌曲")
-                .width('100%')
-                .fontSize(20)
-                .fontColor($r('app.color.font'))
-                .fontWeight(FontWeight.Medium)
-                .margin({ top: 15, bottom: 5 })
-                .padding({ left: 20 })
-                .textAlign(TextAlign.Start)
+              // Text("歌曲")
+              //   .width('100%')
+              //   .fontSize(20)
+              //   .fontColor($r('app.color.font'))
+              //   .fontWeight(FontWeight.Medium)
+              //   .margin({ top: 15, bottom: 5 })
+              //   .padding({ left: 20 })
+              //   .textAlign(TextAlign.Start)
 
               ForEach(this.searchSongs, (song: Song, index) => {
                 Button({ type: ButtonType.Normal }) {
                   Row() {
-                    ImageKnifeComponent({
-                      imageKnifeOption: {
-                        loadSrc: this.baseURL + this.getCoverUrl + this.auth + `&id=${song.id}&size=${this.coverSize}`,
-                        placeholderSrc: $rawfile('nocover.png'),
-                        errorholderSrc: $rawfile('nocover.png'),
-                        objectFit: ImageFit.Contain
-                      }
-                    })
-                      .width(60)
-                      .aspectRatio(1)
-                      .borderRadius(5)
+                    Text(`${index + 1}`)
+                      .fontSize(10)
+                      .layoutWeight(1)
                     Column() {
                       Text(song.title)
                         .fontSize(18)
@@ -265,9 +257,8 @@ export default struct Search_ {
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                     }
-                    .width('50%')
-                    .layoutWeight(1)
-                    .margin({ left: 10 })
+                    .layoutWeight(6)
+                    .margin({ left: 2 })
                     .alignItems(HorizontalAlign.Start)
 
                     Column() {
@@ -283,9 +274,8 @@ export default struct Search_ {
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                     }
-                    .width('50%')
-                    .layoutWeight(1)
-                    .margin({ left: 10 })
+                    .layoutWeight(3)
+                    .margin({ left: 2 })
                     .alignItems(HorizontalAlign.End)
                   }
                   .width('100%')

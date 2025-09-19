@@ -3,10 +3,10 @@ import { media } from '@kit.MediaKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { PromptAction } from '@kit.ArkUI';
-import { ImageKnifeComponent } from '@ohos/imageknife'
+// import { ImageKnifeComponent } from '@ohos/imageknife'
 // old api
-import { getLyrics} from '../utils/Api';
-import { Line, MusicFolder, StructuredLyric, LyricsList} from '../utils/Interface';
+// import { getLyrics} from '../utils/Api';
+import { Line, MusicFolder, StructuredLyric} from '../utils/Interface';
 // new api
 import {ND_getSongs, ND_login, ND_keepAlive} from "../utils/ND_Api"
 import {ND_Song} from "../utils/ND_Interface"
@@ -24,6 +24,7 @@ export default struct Songs {
   @StorageLink('baseURL') baseURL: string = ''
   @StorageLink('username') username: string = ''
   @StorageLink('password') password: string = ''
+  @StorageLink('songCount') songCount: number = 0
   @Consume salt: string
   @Consume version: string
   @Consume client: string
@@ -62,6 +63,54 @@ export default struct Songs {
   private  promptAction: PromptAction | null = null;
   @State searchContent: string = ""
   @State songs: ND_Song[] = [];
+  @State songOrder: "DESC" | "ASC" = "ASC";
+  @State songSort: "random" | "createdAt" | "max_year" | "play_count" | "play_date" | "title" | "album" | "rating" | string = "title";
+  @State sortEn2Zh: Map<string, string> = new Map([
+    ["title", "标题"],
+    ["random", "随机"],
+    ["createdAt", "创建时间"],
+    ["play_date", "播放时间"],
+    ["max_year", "年份"],
+    ["play_count", "播放次数"],
+    ["album", "专辑"],
+    ["rating", "评分"]
+  ]);
+  @State sortZh2En: Map<string, string> = new Map([
+    ["标题", "title"],
+    ["随机", "random"],
+    ["创建时间", "createdAt"],
+    ["播放时间", "play_date"],
+    ["年份", "max_year"],
+    ["播放次数", "play_count"],
+    ["专辑", "album"],
+    ["评分", "rating"]
+  ]);
+  @State orderEn2Zh: Map<string, string> = new Map([
+    ["ASC", "正序"],
+    ["DESC", "倒序"]
+  ]);
+  @State orderZh2En: Map<string, string> = new Map([
+    ["正序", "ASC"],
+    ["倒序", "DESC"]
+  ]);
+
+  genSortMenu(sortEn: "random" | "createdAt" | "max_year" | "play_count" | "play_date" | "title" | "album" | "rating" | string): ()=>void {
+    return async()=>{
+      if (this.songSort != sortEn || this.songSort == "random") {
+        await this.loadSongs(100, this.songOrder, sortEn, true);
+      }
+      this.songSort = sortEn;
+    }
+  }
+
+  genOrderMenu(orderEn: "DESC" | "ASC"): ()=>void {
+    return async()=>{
+      if (this.songOrder != orderEn || this.songSort == "random") {
+        await this.loadSongs(100, orderEn, this.songSort, true);
+      }
+      this.songOrder = orderEn;
+    }
+  }
 
   groupLyrics() {
     this.nowPlayingLyricsByGroup = []
@@ -96,12 +145,27 @@ export default struct Songs {
     return array;
   }
 
-  async loadSongs(count: number = 100) {
-    console.log("==prepare to get songs==");
-    let results = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, this.songs.length, this.songs.length + count);
+  async loadSongs(
+    count: number = 100,
+    songOrder: "DESC" | "ASC" = "ASC",
+    songSort: "random" | "createdAt" | "max_year" | "play_count" | "play_date" | "title" | "album" | "rating" | string = "title",
+    clear_data: boolean = false,
+  ) {
+    this.showProgress = true;
+    console.log(`==prepare to get songs== songOrder=${songOrder}&songSort=${songSort}`);
+    if (clear_data) {
+      this.songs = [];
+    }
+    console.log(`song size=${this.songs.length}`);
+    let result = await ND_getSongs(
+      this.baseURL, this.ND_token, this.ND_id, this.songs.length, this.songs.length + count, songOrder, songSort
+    );
     console.log("==prepare to songs ok==");
-    if (results) {
-      this.songs.push(...results);
+    this.showProgress = false;
+    if (result) {
+      let tempSongs = result.songs;
+      this.songCount = result.songCount;
+      this.songs.push(...tempSongs);
     } else {
       this.promptAction?.showToast({message: "获取歌曲失败，请检查网络"})
     }
@@ -145,7 +209,7 @@ export default struct Songs {
         this.getUIContext().showAlertDialog({message: "登录失败，请检查网络或者账户密码"})
       }
     }
-    this.loadSongs();
+    await this.loadSongs();
     this.showProgress = false;
   }
 
@@ -187,34 +251,51 @@ export default struct Songs {
               this.getUIContext().showAlertDialog({message: "功能待开发"})
             })
         }
+        Row() {
+          Text("排序方式：")
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+          Text(this.sortEn2Zh.get(this.songSort))
+            .border({width: 1})
+            .padding({left: 10, right: 10})
+            // .margin({left: 10, right: 10})
+            .fontSize(16)
+            .borderRadius(5)
+            .bindMenu([
+              {value: "标题", action: this.genSortMenu("title")},
+              {value: "随机", action: this.genSortMenu("random")},
+              {value: "创建时间", action: this.genSortMenu("createdAt")},
+              {value: "播放时间", action: this.genSortMenu("play_date")},
+              {value: "年份", action: this.genSortMenu("max_year")},
+              {value: "播放次数", action: this.genSortMenu("play_count")},
+              {value: "专辑", action: this.genSortMenu("album")},
+              {value: "评分", action: this.genSortMenu("rating")},
+            ])
 
+          Text(this.orderEn2Zh.get(this.songOrder))
+            .border({width: 1})
+            .padding({left: 10, right: 10})
+            .margin({left: 10})
+            .fontSize(16)
+            .borderRadius(5)
+            .bindMenu([
+              {value: "顺序", action: this.genOrderMenu("ASC")},
+              {value: "倒序", action: this.genOrderMenu("DESC")},
+            ])
+        }
+        .margin({ top: 15, bottom: 5 })
+        .padding({ left: 20 })
+        .width('100%')
         Scroll() {
           Column() {
             Column() {
-              Text("歌曲")
-                .width('100%')
-                .fontSize(20)
-                .fontColor($r('app.color.font'))
-                .fontWeight(FontWeight.Medium)
-                .margin({ top: 15, bottom: 5 })
-                .padding({ left: 20 })
-                .textAlign(TextAlign.Start)
-
               ForEach(this.songs, (song: ND_Song, index) => {
                 Button({ type: ButtonType.Normal }) {
                   Row() {
-                    ImageKnifeComponent({
-                      imageKnifeOption: {
-                        loadSrc: this.baseURL + this.getCoverUrl + this.auth + `&id=${song.id}&size=${this.coverSize}`,
-                        placeholderSrc: $rawfile('nocover.png'),
-                        errorholderSrc: $rawfile('nocover.png'),
-                        objectFit: ImageFit.Contain
-                      }
-                    })
-                      .width(60)
-                      .aspectRatio(1)
-                      .borderRadius(5)
                     Column() {
+                      // Text(`${index + 1}`)
+                      //   .fontSize(10)
+                      //   .layoutWeight(1)
                       Text(song.title)
                         .fontSize(18)
                         .fontColor($r('app.color.font'))
@@ -227,9 +308,8 @@ export default struct Songs {
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                     }
-                    .width('50%')
-                    .layoutWeight(1)
-                    .margin({ left: 10 })
+                    .layoutWeight(7)
+                    .margin({ left: 2 })
                     .alignItems(HorizontalAlign.Start)
 
                     Column() {
@@ -245,9 +325,8 @@ export default struct Songs {
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
                     }
-                    .width('50%')
-                    .layoutWeight(1)
-                    .margin({ left: 10 })
+                    .layoutWeight(3)
+                    .margin({ left: 2 })
                     .alignItems(HorizontalAlign.End)
                   }
                   .width('100%')
@@ -330,7 +409,7 @@ export default struct Songs {
       .height('100%')
     }.width("100%")
     .height("100%")
-    .title("歌曲")
+    .title(`歌曲（总数${this.songCount}）`)
     .padding({top: 40})
     .onReady(async (context: NavDestinationContext)=>{
       this.pageStack = context.pathStack;

@@ -15,6 +15,7 @@ export default struct MyProfile {
   @StorageLink('baseURL') baseURL: string = ''
   @StorageLink('username') username: string = ''
   @StorageLink('password') password: string = ''
+  @StorageLink('songCount') songCount: number = 0
   @Consume salt: string
   @Consume version: string
   @Consume client: string

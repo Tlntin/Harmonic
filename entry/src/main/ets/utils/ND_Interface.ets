@@ -102,6 +102,10 @@ export interface ND_Song {
   updatedAt: string,
 }
 
+export interface ND_getSongsResult {
+  songs: ND_Song[],
+  songCount: number
+}
 
 export interface SaveState {
   nowPlayingSong: ND_Song | undefined;

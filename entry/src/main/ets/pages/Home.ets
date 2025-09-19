@@ -1,7 +1,11 @@
 import { curves} from '@kit.ArkUI';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { ImageKnifeComponent } from '@ohos/imageknife'
-import { Album, Artist, MusicFolder, Song, SearchResult} from '../utils/Interface';
+import { media } from '@kit.MediaKit';
+import { avSession as AVSessionManager } from '@kit.AVSessionKit';
+import { Album, Artist, MusicFolder, Song, StructuredLyric, Line} from '../utils/Interface';
+import { ND_Song } from '../utils/ND_Interface';
+import {ND_keepAlive, ND_login} from "../utils/ND_Api";
 
 let deviceTypeInfo: string = deviceInfo.deviceType;
 
@@ -10,14 +14,16 @@ export default struct Home {
   @StorageLink('baseURL') baseURL: string = ''
   @StorageLink('username') username: string = ''
   @StorageLink('password') password: string = ''
+  @StorageLink('songCount') songCount: number = 0
+  @StorageLink('playMode') playMode: number = 0
   @Consume salt: string;
   @Consume version: string;
   @Consume client: string;
   @Consume auth: string;
   @Consume getCoverUrl: string;
-  @Consume recentAlbums: Album[]
-  @Consume newestAlbums: Album[]
-  @Consume frequentAlbums: Album[]
+  @Consume recentSongs: ND_Song[]
+  @Consume newestSongs: ND_Song[]
+  @Consume frequentSongs: ND_Song[]
   @Consume starredAlbums: Album[]
   @Consume starredArtists: Artist[]
   @Consume randomAlbums: Album[]
@@ -39,73 +45,164 @@ export default struct Home {
   @Consume searchSongs: Song[]
   @Consume searchAlbums: Album[]
   @Consume searchArtists: Artist[];
-  private recentAlbumsScroller: Scroller = new Scroller
-  private newestAlbumsScroller: Scroller = new Scroller
+  @Consume nowPlayingSong: ND_Song | undefined
+  @Consume nowPlayingLyrics: StructuredLyric | undefined
+  @Consume nowPlayingLyricsByGroup: Line[][]
+  @Consume nowPlayingList: ND_Song[]
+  @Consume nowPlayingListOriginal: ND_Song[]
+  @Consume nowPlayingIndex: number
+  @Consume avPlayer: media.AVPlayer | undefined
+  @Consume isPlaying: boolean
+  @Consume ND_token: string
+  @Consume ND_id: string
+  private recentSongsScroller: Scroller = new Scroller
+  private newestSongsScroller: Scroller = new Scroller
   private frequentAlbumsScroller: Scroller = new Scroller
   private randomAlbumsScroller: Scroller = new Scroller
   private starredAlbumsScroller: Scroller = new Scroller
   private starredArtistsScroller: Scroller = new Scroller
 
+  async loginOrKeepAlive() {
+    // login or keep-alive
+    // keep-alive
+    let needLogin = false;
+    if (this.ND_token.length > 0 && this.ND_id.length > 0) {
+      let result = await ND_keepAlive(this.baseURL, this.ND_token, this.ND_id);
+      // may be is expired
+      if (!result) {
+        needLogin = true;
+      }
+    } else {
+      needLogin = true;
+    }
+    // login
+    if (needLogin) {
+      let result = await ND_login(this.baseURL, this.username, this.password);
+      if (result) {
+        this.ND_token = result.token;
+        this.ND_id = result.id;
+      } else {
+        this.getUIContext().showAlertDialog({message: "登录失败，请检查网络或者账户密码"})
+      }
+    }
+  }
+
   async aboutToAppear() {
     this.needUpdate = !this.needUpdate
+    await this.loginOrKeepAlive();
+  }
+
+  groupLyrics() {
+    this.nowPlayingLyricsByGroup = []
+    let index = -1
+    for (let line of this.nowPlayingLyrics!.line) {
+      if (this.nowPlayingLyricsByGroup.length === 0 || line.start !== this.nowPlayingLyricsByGroup[index][0].start) {
+        index++
+        this.nowPlayingLyricsByGroup.push([])
+        this.nowPlayingLyricsByGroup[index].push(line)
+      } else {
+        this.nowPlayingLyricsByGroup[index].push(line)
+      }
+    }
+  }
+
+  getNowPlayingIndex(song: ND_Song, list: ND_Song[]) {
+    for (let index = 0; index < list.length; index++) {
+      if (list[index].id === song.id) {
+        this.nowPlayingIndex = index
+        break;
+      }
+    }
+  }
+
+  shuffleList<T>(array: T[]): T[] {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      let temp = array[i];
+      array[i] = array[j];
+      array[j] = temp;
+    }
+    return array;
+  }
+
+  async playSong(song: ND_Song) {
+    this.startPlaying = true
+    await this.avPlayer!.reset()
+    this.isPlaying = true
+    this.nowPlayingSong = song
+    if (song.lyrics.length > 0) {
+      let temp_lyrics: StructuredLyric[] = JSON.parse(song.lyrics)
+      this.nowPlayingLyrics = temp_lyrics[0];
+    }
+    if (this.nowPlayingLyrics !== undefined) {
+      this.groupLyrics()
+    }
+    this.nowPlayingListOriginal = this.recentSongs.slice()
+    if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE) {
+      this.nowPlayingList = this.shuffleList(this.nowPlayingListOriginal.slice())
+    } else {
+      this.nowPlayingList = this.nowPlayingListOriginal.slice()
+    }
+    this.getNowPlayingIndex(song, this.nowPlayingList)
+    this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
   }
 
   build() {
     Scroll() {
       Column() {
-        Column() {
-          Text("首页")
-            .textAlign(TextAlign.Start)
+        Text("首页")
+          .textAlign(TextAlign.Start)
+          .width("100%")
+          .fontSize(30)
+          .fontWeight(FontWeight.Bold)
+          // .margin({ top: 40 })
+          .padding({ left: 20, right: 20 })
+
+        Row() {
+          Search({value: this.searchContent, placeholder: "搜索歌曲/专辑/艺人"})
             .width("100%")
-            .fontSize(30)
-            .fontWeight(FontWeight.Bold)
-            // .margin({ top: 40 })
-            .padding({ left: 20, right: 20 })
+            .height(this.displayWidth > 1400 ? 50 : 40)
+            .layoutWeight(1)
+            .borderRadius(10)
+            .margin({ left: 20, right: 20 })
+            .searchIcon({
+              size: 0
+            })
+            .searchButton("搜索", {
+              fontSize: this.displayWidth > 1400 ? 20 : 18,
+              fontColor: $r('app.color.font'),
+              autoDisable: true
+            })
+            .searchIcon(
+              {src: $r("app.media.ic_public_search")}
+            )
+            .placeholderColor($r('app.color.font_secondary'))
+            .placeholderFont({
+              size: this.displayWidth > 1400 ? 22 : 20
+            })
+            .fontColor($r('app.color.font'))
+            .textFont({
+              size: this.displayWidth > 1400 ? 22 : 20
+            })
+            .caretStyle({
+              color: $r('app.color.font_secondary')
+            })
+            .onChange((tempContent)=>{
+              this.searchContent = tempContent;
+            })
+            .enterKeyType(EnterKeyType.Search)
+            .onSubmit(async()=>{
+              if (this.searchContent.length > 0) {
+                this.pageStack.pushPathByName("Search", JSON.stringify({
+                  searchContent: this.searchContent,
+                }))
+              }
+            })
+        }
+        .padding({top: 20})
+        // .margin({ top: 10 })
 
-          Row() {
-            Search({value: this.searchContent, placeholder: "搜索歌曲/专辑/艺人"})
-              .width("100%")
-              .height(this.displayWidth > 1400 ? 50 : 40)
-              .layoutWeight(1)
-              .borderRadius(10)
-              .margin({ left: 20, right: 20 })
-              .searchIcon({
-                size: 0
-              })
-              .searchButton("搜索", {
-                fontSize: this.displayWidth > 1400 ? 20 : 18,
-                fontColor: $r('app.color.font'),
-                autoDisable: true
-              })
-              .searchIcon(
-                {src: $r("app.media.ic_public_search")}
-              )
-              .placeholderColor($r('app.color.font_secondary'))
-              .placeholderFont({
-                size: this.displayWidth > 1400 ? 22 : 20
-              })
-              .fontColor($r('app.color.font'))
-              .textFont({
-                size: this.displayWidth > 1400 ? 22 : 20
-              })
-              .caretStyle({
-                color: $r('app.color.font_secondary')
-              })
-              .onChange((tempContent)=>{
-                this.searchContent = tempContent;
-              })
-              .enterKeyType(EnterKeyType.Search)
-              .onSubmit(async()=>{
-                if (this.searchContent.length > 0) {
-                  this.pageStack.pushPathByName("Search", JSON.stringify({
-                    searchContent: this.searchContent,
-                  }))
-                }
-              })
-          }
-          .padding({top: 20})
-          // .margin({ top: 10 })
-
+        Column() {
           Row() {
             Text("最近播放")
               .fontSize(20)
@@ -126,7 +223,7 @@ export default struct Home {
               .backgroundColor(Color.Transparent)
               .margin({ right: 10 })
               .onClick(() => {
-                this.recentAlbumsScroller.scrollPage({
+                this.recentSongsScroller.scrollPage({
                   next: false,
                   animation: true
                 })
@@ -142,7 +239,7 @@ export default struct Home {
               .borderRadius(5)
               .backgroundColor(Color.Transparent)
               .onClick(() => {
-                this.recentAlbumsScroller.scrollPage({
+                this.recentSongsScroller.scrollPage({
                   next: true,
                   animation: true
                 })
@@ -156,36 +253,40 @@ export default struct Home {
           .justifyContent(FlexAlign.SpaceBetween)
           .alignItems(VerticalAlign.Bottom)
 
-          List({ scroller: this.recentAlbumsScroller }) {
-            ForEach(this.recentAlbums, (album: Album, index) => {
+          List({ scroller: this.recentSongsScroller }) {
+            ForEach(this.recentSongs, (song: ND_Song, index) => {
               ListItem() {
                 Button({ type: ButtonType.Normal }) {
                   Column() {
                     ImageKnifeComponent({
                       imageKnifeOption: {
-                        loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${album.id}&size=${this.coverSize}`,
+                        loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${song.id}&size=${this.coverSize}`,
                         placeholderSrc: $rawfile('nocover.png'),
                         errorholderSrc:$rawfile('nocover.png') ,
                         objectFit: ImageFit.Contain
                       }
                     })
-                      .height('100%')
+                      .height('75%')
                       .aspectRatio(1)
                       .borderRadius(10)
                       .margin(10)
+                    Text(`${song.title}-${song.artist}`)
+                      .fontSize(16)
+                      .maxLines(1)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      .padding({top: 5, bottom: 5})
                   }
                   .width('auto')
                   .height('100%')
                 }
                 .width('auto')
                 .height('100%')
-                .margin({ left: index === 0 ? 10 : 0, right: index === this.recentAlbums!.length - 1 ? 10 : 0 })
+                .margin({ left: index === 0 ? 10 : 0, right: index === this.recentSongs!.length - 1 ? 10 : 0 })
                 .animation({ curve: curves.springMotion(0.6, 1) })
                 .borderRadius(10)
                 .backgroundColor(Color.Transparent)
-                .onClick(() => {
-                  this.album = album
-                  this.pageStack.pushPathByName('AlbumDetail', undefined);
+                .onClick(async () => {
+                  this.playSong(song);
                 })
               }
             })
@@ -198,9 +299,8 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.coverSize)
-        // .height(this.displayWidth > 1400 ? 250 : 320)
-        .visibility(this.showProgress === true || this.recentAlbums.length === 0 ? Visibility.None :
+        .height(this.displayWidth > 1400 ? 270 : 230)
+        .visibility(this.showProgress === true || this.recentSongs.length === 0 ? Visibility.None :
         Visibility.Visible)
 
         Column() {
@@ -224,7 +324,7 @@ export default struct Home {
               .backgroundColor(Color.Transparent)
               .margin({ right: 10 })
               .onClick(() => {
-                this.newestAlbumsScroller.scrollPage({
+                this.newestSongsScroller.scrollPage({
                   next: false,
                   animation: true
                 })
@@ -240,7 +340,7 @@ export default struct Home {
               .borderRadius(5)
               .backgroundColor(Color.Transparent)
               .onClick(() => {
-                this.newestAlbumsScroller.scrollPage({
+                this.newestSongsScroller.scrollPage({
                   next: true,
                   animation: true
                 })
@@ -249,42 +349,47 @@ export default struct Home {
             .visibility(deviceTypeInfo === '2in1' ? Visibility.Visible : Visibility.None)
           }
           .width('100%')
-          .padding({ left: 20, right: 20 })
+          .padding({ left: 20, right: 20, top: 20})
           .margin({ top: 10 })
           .justifyContent(FlexAlign.SpaceBetween)
           .alignItems(VerticalAlign.Bottom)
 
-          List({ scroller: this.newestAlbumsScroller }) {
-            ForEach(this.newestAlbums, (album: Album, index) => {
+          List({ scroller: this.newestSongsScroller }) {
+            ForEach(this.newestSongs, (song: ND_Song, index) => {
               ListItem() {
-                Button({ type: ButtonType.Normal }) {
-                  Column() {
-                    ImageKnifeComponent({
-                      imageKnifeOption: {
-                        loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${album.id}&size=${this.coverSize}`,
-                        placeholderSrc: $rawfile('nocover.png'),
-                        errorholderSrc:$rawfile('nocover.png') ,
-                        objectFit: ImageFit.Contain
-                      }
-                    })
-                      .height('100%')
-                      .aspectRatio(1)
-                      .borderRadius(10)
-                      .margin(10)
+                  Button({ type: ButtonType.Normal }) {
+                    Column() {
+                      ImageKnifeComponent({
+                        imageKnifeOption: {
+                          loadSrc: this.baseURL + this.getCoverUrl + this.auth +
+                            `&id=${song.id}&size=${this.coverSize}`,
+                          placeholderSrc: $rawfile('nocover.png'),
+                          errorholderSrc: $rawfile('nocover.png'),
+                          objectFit: ImageFit.Contain
+                        }
+                      })
+                        .height('75%')
+                        .aspectRatio(1)
+                        .borderRadius(10)
+                        .margin(10)
+                      Text(`${song.title}-${song.artist}`)
+                        .fontSize(16)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .padding({ top: 5, bottom: 5 })
+                    }
+                    .width('auto')
+                    .height('100%')
                   }
                   .width('auto')
-                  .height('100%')
-                }
-                .width('auto')
-                .height('100%')
-                .margin({ left: index === 0 ? 10 : 0, right: index === this.newestAlbums!.length - 1 ? 10 : 0 })
-                .animation({ curve: curves.springMotion(0.6, 1) })
-                .borderRadius(10)
-                .backgroundColor(Color.Transparent)
-                .onClick(() => {
-                  this.album = album
-                  this.pageStack.pushPathByName('AlbumDetail', undefined);
-                })
+                  .layoutWeight(4)
+                  .margin({ left: index === 0 ? 10 : 0, right: index === this.newestSongs!.length - 1 ? 10 : 0 })
+                  .animation({ curve: curves.springMotion(0.6, 1) })
+                  .borderRadius(10)
+                  .backgroundColor(Color.Transparent)
+                  .onClick(async() => {
+                    await this.playSong(song);
+                  })
               }
             })
           }
@@ -296,8 +401,8 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.displayWidth > 1400 ? 250 : 210)
-        .visibility(this.showProgress === true || this.newestAlbums.length === 0 ? Visibility.None :
+        .height(this.displayWidth > 1400 ? 270 : 230)
+        .visibility(this.showProgress === true || this.newestSongs.length === 0 ? Visibility.None :
         Visibility.Visible)
 
         Column() {
@@ -346,42 +451,48 @@ export default struct Home {
             .visibility(deviceTypeInfo === '2in1' ? Visibility.Visible : Visibility.None)
           }
           .width('100%')
-          .padding({ left: 20, right: 20 })
+          .padding({ left: 20, right: 20, top: 20})
           .margin({ top: 10 })
           .justifyContent(FlexAlign.SpaceBetween)
           .alignItems(VerticalAlign.Bottom)
 
           List({ scroller: this.frequentAlbumsScroller }) {
-            ForEach(this.frequentAlbums, (album: Album, index) => {
+            ForEach(this.frequentSongs, (song: ND_Song, index) => {
               ListItem() {
-                Button({ type: ButtonType.Normal }) {
-                  Column() {
-                    ImageKnifeComponent({
-                      imageKnifeOption: {
-                        loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${album.id}&size=${this.coverSize}`,
-                        placeholderSrc: $rawfile('nocover.png'),
-                        errorholderSrc:$rawfile('nocover.png') ,
-                        objectFit: ImageFit.Contain
-                      }
-                    })
-                      .height('100%')
-                      .aspectRatio(1)
-                      .borderRadius(10)
-                      .margin(10)
+                  Button({ type: ButtonType.Normal }) {
+                    Column() {
+                      ImageKnifeComponent({
+                        imageKnifeOption: {
+                          loadSrc: this.baseURL + this.getCoverUrl + this.auth +
+                            `&id=${song.id}&size=${this.coverSize}`,
+                          placeholderSrc: $rawfile('nocover.png'),
+                          errorholderSrc: $rawfile('nocover.png'),
+                          objectFit: ImageFit.Contain
+                        }
+                      })
+                        .height('75%')
+                        .aspectRatio(1)
+                        .borderRadius(20)
+                        .margin(10)
+
+                      Text(`${song.title}-${song.artist}`)
+                        .fontSize(16)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .padding({ top: 5, bottom: 5 })
+                    }
+                    .width('auto')
+                    .height('100%')
                   }
                   .width('auto')
-                  .height('100%')
-                }
-                .width('auto')
-                .height('100%')
-                .margin({ left: index === 0 ? 10 : 0, right: index === this.frequentAlbums!.length - 1 ? 10 : 0 })
-                .animation({ curve: curves.springMotion(0.6, 1) })
-                .borderRadius(10)
-                .backgroundColor(Color.Transparent)
-                .onClick(() => {
-                  this.album = album
-                  this.pageStack.pushPathByName('AlbumDetail', undefined);
-                })
+                  .layoutWeight(4)
+                  .margin({ left: index === 0 ? 10 : 0, right: index === this.frequentSongs!.length - 1 ? 10 : 0 })
+                  .animation({ curve: curves.springMotion(0.6, 1) })
+                  .borderRadius(10)
+                  .backgroundColor(Color.Transparent)
+                  .onClick(async () => {
+                    await this.playSong(song);
+                  })
               }
             })
           }
@@ -393,8 +504,8 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.displayWidth > 1400 ? 250 : 210)
-        .visibility(this.showProgress === true || this.frequentAlbums.length === 0 ? Visibility.None :
+        .height(this.displayWidth > 1400 ? 270 : 230)
+        .visibility(this.showProgress === true || this.frequentSongs.length === 0 ? Visibility.None :
         Visibility.Visible)
 
         Column() {
@@ -443,7 +554,7 @@ export default struct Home {
             .visibility(deviceTypeInfo === '2in1' ? Visibility.Visible : Visibility.None)
           }
           .width('100%')
-          .padding({ left: 20, right: 20 })
+          .padding({ left: 20, right: 20, top: 20})
           .margin({ top: 10 })
           .justifyContent(FlexAlign.SpaceBetween)
           .alignItems(VerticalAlign.Bottom)
@@ -540,7 +651,7 @@ export default struct Home {
             .visibility(deviceTypeInfo === '2in1' ? Visibility.Visible : Visibility.None)
           }
           .width('100%')
-          .padding({ left: 20, right: 20 })
+          .padding({ left: 20, right: 20, top: 20})
           .margin({ top: 10 })
           .justifyContent(FlexAlign.SpaceBetween)
           .alignItems(VerticalAlign.Bottom)
@@ -637,7 +748,7 @@ export default struct Home {
             .visibility(deviceTypeInfo === '2in1' ? Visibility.Visible : Visibility.None)
           }
           .width('100%')
-          .padding({ left: 20, right: 20 })
+          .padding({ left: 20, right: 20, top: 20})
           .margin({ top: 10 })
           .justifyContent(FlexAlign.SpaceBetween)
           .alignItems(VerticalAlign.Bottom)
@@ -707,7 +818,7 @@ export default struct Home {
         .padding({ bottom: 160 })
         .justifyContent(FlexAlign.Center)
         .visibility(this.starredArtists.length === 0 && this.starredAlbums.length === 0 &&
-          this.frequentAlbums.length === 0 && this.newestAlbums.length === 0 && this.recentAlbums.length === 0 &&
+          this.frequentSongs.length === 0 && this.newestSongs.length === 0 && this.recentSongs.length === 0 &&
           this.showProgress === false ? Visibility.Visible : Visibility.None)
       }
       .padding({ bottom: this.startPlaying === true ? 95 : 10 })
