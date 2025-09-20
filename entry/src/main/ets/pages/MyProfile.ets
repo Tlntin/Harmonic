@@ -66,9 +66,9 @@ export default struct MyProfile {
 
   async aboutToAppear() {
     this.showProgress = true
-    this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-      return Date.parse(b.changed) - Date.parse(a.changed);
-    })
+    // this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
+    //   return Date.parse(b.changed) - Date.parse(a.changed);
+    // })
     this.uiContext = this.getUIContext();
     if (!this.uiContext) {
       console.warn("no uiContext");
@@ -166,14 +166,15 @@ export default struct MyProfile {
                         .fontColor("#C0C0C0")
                         .width("100%")
                         .textAlign(TextAlign.Start)
-                    }
-                    Blank()
+                    }.layoutWeight(7)
+                    Blank().layoutWeight(4)
                     Image($r("app.media.ic_public_arrow_right"))
                       .size({ width: 30, height: 30 })
+                      .layoutWeight(1)
                   }
                   .width('100%')
                   .height('100%')
-                  .padding({ left: 20, right: 20 })
+                  //.padding({ left: 20, right: 20 })
                   .onClick(() => {
                     this.playlist = playlist
                     this.pageStack.pushPathByName('PlaylistDetail', undefined);

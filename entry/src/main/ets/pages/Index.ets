@@ -662,29 +662,6 @@ struct Index {
   }
 
   async updatePage() {
-    switch (this.nowPage) {
-      case 0:
-        this.recentSongs = []
-        this.newestSongs = []
-        this.frequentSongs = []
-        this.randomAlbums = []
-        this.starredAlbums = []
-        this.starredArtists = []
-        break;
-      case 1:
-        this.searchSongs = []
-        this.searchAlbums = []
-        this.searchArtists = []
-        break;
-      case 2:
-        this.albums = []
-        break;
-      case 3:
-        this.artists = []
-        break;
-      default:
-        break;
-    }
     if (this.baseURL.length === 0) {
       return
     }
@@ -711,56 +688,37 @@ struct Index {
           this.libraryStates[id] = false
           continue;
         }
-        switch (this.nowPage) {
-          case 0:
-            let result1 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 50, "DESC", "play_date");
-            if (result1) {
-              this.songCount = result1.songCount;
-              this.recentSongs.push(...result1.songs);
-            }
-            let result2 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 50, "DESC", "createdAt");
-            if (result2) {
-              this.songCount = result2.songCount;
-              this.newestSongs.push(...result2.songs);
-            }
-            let result3 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 50, "DESC", "play_count");
-            if (result3) {
-              this.songCount = result3.songCount;
-              this.frequentSongs.push(...result3.songs);
-            }
-            let randomAlbums = await getRandomAlbums(this.baseURL, this.username, this.password, Number(id))
-            this.randomAlbums.unshift(...randomAlbums)
-            let starredAlbums = await getStarredAlbums(this.baseURL, this.username, this.password, Number(id))
-            this.starredAlbums.unshift(...starredAlbums)
-            let starredArtists = await getStarredArtists(this.baseURL, this.username, this.password, Number(id))
-            this.starredArtists.unshift(...starredArtists)
-            break;
-          case 2:
-            // clear albums
-            this.albums = [];
-            let offset = this.albums.length;
-            let size = 50
-            let albums = await getAlbumList(this.baseURL, this.username, this.password, offset, Number(id), size)
-            if (albums === undefined || albums.length === 0) {
-              console.log("==get albums failed")
-              break;
-            }
-            this.albums.push(...albums)
-            break;
-          case 3:
-            let artist_result = await ND_getArtist(
-              this.baseURL,
-              this.ND_token,
-              this.ND_id,
-              0,
-              100,
-            );
-            if (artist_result) {
-              this.artists.push(...artist_result);
-            }
-            break;
-          default:
-            break;
+        if (this.nowPage === 0) {
+          this.recentSongs = []
+          this.newestSongs = []
+          this.frequentSongs = []
+          this.randomAlbums = []
+          this.starredAlbums = []
+          this.starredArtists = []
+          let result1 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 20, "DESC", "play_date");
+          if (result1) {
+            this.songCount = result1.songCount;
+            this.recentSongs.push(...result1.songs);
+          }
+          let result2 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 20, "DESC", "createdAt");
+          if (result2) {
+            this.songCount = result2.songCount;
+            this.newestSongs.push(...result2.songs);
+          }
+          let result3 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 20, "DESC", "play_count");
+          if (result3) {
+            this.songCount = result3.songCount;
+            this.frequentSongs.push(...result3.songs);
+          }
+          this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
+            return Date.parse(b.changed) - Date.parse(a.changed);
+          })
+          let randomAlbums = await getRandomAlbums(this.baseURL, this.username, this.password, Number(id))
+          this.randomAlbums.unshift(...randomAlbums)
+          let starredAlbums = await getStarredAlbums(this.baseURL, this.username, this.password, Number(id))
+          this.starredAlbums.unshift(...starredAlbums)
+          let starredArtists = await getStarredArtists(this.baseURL, this.username, this.password, Number(id))
+          this.starredArtists.unshift(...starredArtists)
         }
       }
     }

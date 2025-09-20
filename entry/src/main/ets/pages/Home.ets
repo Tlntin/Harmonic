@@ -88,7 +88,10 @@ export default struct Home {
   }
 
   async aboutToAppear() {
-    this.needUpdate = !this.needUpdate
+    // no songs, need get data
+    if (this.recentSongs.length === 0 && this.frequentSongs.length === 0 && this.newestSongs.length === 0) {
+      this.needUpdate = true;
+    }
     await this.loginOrKeepAlive();
   }
 
@@ -263,18 +266,23 @@ export default struct Home {
                         loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${song.id}&size=${this.coverSize}`,
                         placeholderSrc: $rawfile('nocover.png'),
                         errorholderSrc:$rawfile('nocover.png') ,
-                        objectFit: ImageFit.Contain
+                        objectFit: ImageFit.Contain,
+                        border:{radius: 10}
                       }
                     })
-                      .height('75%')
+                      .height('50%')
                       .aspectRatio(1)
-                      .borderRadius(10)
                       .margin(10)
-                    Text(`${song.title}-${song.artist}`)
+
+                    Text(`${song.title}`)
                       .fontSize(16)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
-                      .padding({top: 5, bottom: 5})
+
+                    Text(`${song.artist}`)
+                      .fontSize(16)
+                      .maxLines(1)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
                   }
                   .width('auto')
                   .height('100%')
@@ -282,6 +290,7 @@ export default struct Home {
                 .width('auto')
                 .height('100%')
                 .margin({ left: index === 0 ? 10 : 0, right: index === this.recentSongs!.length - 1 ? 10 : 0 })
+                .padding(10)
                 .animation({ curve: curves.springMotion(0.6, 1) })
                 .borderRadius(10)
                 .backgroundColor(Color.Transparent)
@@ -365,18 +374,32 @@ export default struct Home {
                             `&id=${song.id}&size=${this.coverSize}`,
                           placeholderSrc: $rawfile('nocover.png'),
                           errorholderSrc: $rawfile('nocover.png'),
-                          objectFit: ImageFit.Contain
+                          objectFit: ImageFit.Contain,
+                          border:{radius: 10}
                         }
                       })
-                        .height('75%')
+                        .height('70%')
                         .aspectRatio(1)
-                        .borderRadius(10)
                         .margin(10)
-                      Text(`${song.title}-${song.artist}`)
-                        .fontSize(16)
-                        .maxLines(1)
-                        .textOverflow({ overflow: TextOverflow.Ellipsis })
-                        .padding({ top: 5, bottom: 5 })
+                      Column() {
+                        Text(`${song.title}`)
+                          .fontSize(14)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .textAlign(TextAlign.Start)
+                          .fontWeight(FontWeight.Medium)
+                          .width("100%")
+
+                        Text(`${song.artist}`)
+                          .fontSize(14)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .textAlign(TextAlign.Start)
+                          .fontWeight(FontWeight.Medium)
+                          .width("100%")
+                      }
+                      .padding({ bottom: 2})
+                      .width(120)
                     }
                     .width('auto')
                     .height('100%')
@@ -401,7 +424,7 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.displayWidth > 1400 ? 270 : 230)
+        .height(this.displayWidth > 1400 ? 290 : 250)
         .visibility(this.showProgress === true || this.newestSongs.length === 0 ? Visibility.None :
         Visibility.Visible)
 
@@ -467,19 +490,32 @@ export default struct Home {
                             `&id=${song.id}&size=${this.coverSize}`,
                           placeholderSrc: $rawfile('nocover.png'),
                           errorholderSrc: $rawfile('nocover.png'),
-                          objectFit: ImageFit.Contain
+                          objectFit: ImageFit.Contain,
+                          border:{radius: 10}
                         }
                       })
-                        .height('75%')
+                        .height('70%')
                         .aspectRatio(1)
-                        .borderRadius(20)
                         .margin(10)
+                      Column() {
+                        Text(`${song.title}`)
+                          .fontSize(14)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .textAlign(TextAlign.Start)
+                          .fontWeight(FontWeight.Medium)
+                          .width("100%")
 
-                      Text(`${song.title}-${song.artist}`)
-                        .fontSize(16)
-                        .maxLines(1)
-                        .textOverflow({ overflow: TextOverflow.Ellipsis })
-                        .padding({ top: 5, bottom: 5 })
+                        Text(`${song.artist}`)
+                          .fontSize(14)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .textAlign(TextAlign.Start)
+                          .fontWeight(FontWeight.Medium)
+                          .width("100%")
+                      }
+                      .padding({ bottom: 2})
+                      .width(120)
                     }
                     .width('auto')
                     .height('100%')
@@ -504,7 +540,7 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.displayWidth > 1400 ? 270 : 230)
+        .height(this.displayWidth > 1400 ? 290 : 250)
         .visibility(this.showProgress === true || this.frequentSongs.length === 0 ? Visibility.None :
         Visibility.Visible)
 
@@ -568,14 +604,24 @@ export default struct Home {
                       imageKnifeOption: {
                         loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${album.id}&size=${this.coverSize}`,
                         placeholderSrc: $rawfile('nocover.png'),
-                        errorholderSrc:$rawfile('nocover.png') ,
-                        objectFit: ImageFit.Contain
+                        errorholderSrc: $rawfile('nocover.png'),
+                        objectFit: ImageFit.Contain,
+                        border:{radius: 10}
                       }
                     })
-                      .height('100%')
+                      .height('70%')
                       .aspectRatio(1)
-                      .borderRadius(10)
                       .margin(10)
+                    Column() {
+                      Text(`${album.title}`)
+                        .fontSize(14)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .textAlign(TextAlign.Center)
+                        .fontWeight(FontWeight.Medium)
+                        .width("100%")
+                    }.width(150)
+
                   }
                   .width('auto')
                   .height('100%')
@@ -601,7 +647,7 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.displayWidth > 1400 ? 250 : 210)
+        .height(this.displayWidth > 1400 ? 270 : 230)
         .visibility(this.showProgress === true || this.randomAlbums.length === 0 ? Visibility.None :
         Visibility.Visible)
 
@@ -666,12 +712,12 @@ export default struct Home {
                         loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${album.id}&size=${this.coverSize}`,
                         placeholderSrc: $rawfile('nocover.png'),
                         errorholderSrc:$rawfile('nocover.png') ,
-                        objectFit: ImageFit.Contain
+                        objectFit: ImageFit.Contain,
+                        border:{radius: 10}
                       }
                     })
                       .height('100%')
                       .aspectRatio(1)
-                      .borderRadius(10)
                       .margin(10)
                   }
                   .width('auto')
