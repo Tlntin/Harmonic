@@ -144,6 +144,8 @@ struct Index {
   @Provide ND_token: string  = "";
   @Provide ND_id: string = "";
   @Provide searchContent: string = ""
+  private listScroller: Scroller = new Scroller
+  @State showList: boolean = false
   @State homeTool: ToolbarItem = {
     value: "首页",
     icon: this.nowPage === 0 ? $r("app.media.ic_public_home_filled") : $r("app.media.ic_public_home"),
@@ -926,6 +928,118 @@ struct Index {
     .backgroundColor($r('app.color.bar_background'))
   }
 
+
+  @Builder
+  playlistEnd(index: number) {
+    Button({ type: ButtonType.Circle }) {
+      Image($r('app.media.delete'))
+        .width(30)
+        .height(30)
+    }
+    .width(40)
+    .height(40)
+    .margin({ left: 10, right: 10 })
+    .backgroundColor(Color.Red)
+    .onClick(() => {
+      if (index === this.nowPlayingIndex) {
+        this.uiContext!.getPromptAction().showToast({
+          message: '正在播放，无法删除！',
+          duration: 500
+        });
+      } else if (index > this.nowPlayingIndex) {
+        this.nowPlayingList.splice(index, 1);
+      } else {
+        this.nowPlayingList.splice(index, 1);
+        this.nowPlayingIndex--
+      }
+    })
+  }
+
+  @Builder
+  listBuilder() {
+    Column() {
+      List({ scroller: this.listScroller }) {
+        ForEach(this.nowPlayingList, (song: ND_Song, index) => {
+          ListItem() {
+            Button({ type: ButtonType.Normal }) {
+              Row() {
+                ImageKnifeComponent({
+                  imageKnifeOption: {
+                    loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${song.id}&size=${this.coverSize}`,
+                    placeholderSrc: $rawfile('nocover.png'),
+                    errorholderSrc:$rawfile('nocover.png') ,
+                    objectFit: ImageFit.Contain
+                  }
+                })
+                  .width(45)
+                  .aspectRatio(1)
+                  .borderRadius(5)
+                Column() {
+                  Text(song.title)
+                    .fontSize(17)
+                    .fontColor($r('app.color.font'))
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  Text(song.artist + " - " + song.album)
+                    .fontSize(14)
+                    .fontColor($r('app.color.font_secondary'))
+                    .margin({ top: 5 })
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                }
+                .width('100%')
+                .layoutWeight(1)
+                .margin({ left: 10 })
+                .alignItems(HorizontalAlign.Start)
+              }
+              .width('100%')
+              .height('100%')
+            }
+            .width('100%')
+            .height(60)
+            .borderRadius(10)
+            .padding({ left: 20, right: 20 })
+            .backgroundColor(index === this.nowPlayingIndex ? $r('app.color.progress_background') :
+              $r('app.color.bar_background'))
+            .onClick(async () => {
+              this.showList = false
+              await this.avPlayer!.reset()
+              this.nowPlayingSong = song
+              this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id)
+              if (this.nowPlayingLyrics !== undefined) {
+                this.groupLyrics()
+              }
+              this.nowPlayingIndex = index
+              this.isPlaying = true
+              this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
+            })
+          }
+          .swipeAction({
+            end: {
+              builder: () => {
+                this.playlistEnd(index)
+              },
+            }
+          })
+        })
+      }
+      .width('100%')
+      .height('100%')
+      .listDirection(Axis.Vertical)
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.Fade, { alwaysEnabled: false })
+    }
+    .width('90%')
+    .height(this.nowPlayingList.length > 7 ? 420 : this.nowPlayingList.length * 60)
+    .borderRadius(10)
+    .margin({ bottom: 25 })
+    .clip(true)
+    .backgroundColor($r('app.color.bar_background'))
+    .onAppear(() => {
+      this.listScroller.scrollToIndex(this.nowPlayingIndex, false, ScrollAlign.CENTER)
+    })
+  }
+
   async loginOrKeepAlive() {
     // login or keep-alive
     // keep-alive
@@ -1110,6 +1224,7 @@ struct Index {
     }
     return false
   }
+
   build() {
     Column() {
       Stack() {
@@ -1150,11 +1265,8 @@ struct Index {
             }
           }
           .mode(NavigationMode.Stack)
-          // .title(this.titlebar())
           .titleMode(NavigationTitleMode.Mini)
           .hideBackButton(true)
-          // .padding({ top: this.statusBarHeight })
-          // .menus(this.menuBuilder())
           .bindSheet($$this.showMenu, this.bindMenuBuilder, {
             showClose: false,
             height: SheetSize.FIT_CONTENT,
@@ -1163,7 +1275,7 @@ struct Index {
             backgroundColor: $r('app.color.content_background'),
           })
           .toolbarConfiguration([this.homeTool, this.myProfileTool])
-          .zIndex(this.showPlay? 1 : 3)
+          .zIndex(this.showPlay? 0 : 1)
 
           if (this.sidebarType === SideBarContainerType.Overlay) {
             Column()
@@ -1196,10 +1308,11 @@ struct Index {
                         loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`,
                         placeholderSrc: $rawfile('nocover.png'),
                         errorholderSrc:$rawfile('nocover.png') ,
-                        objectFit: ImageFit.Contain
+                        objectFit: ImageFit.Contain,
+                        border: {radius: 5}
                       }
                     })
-                      .width(40)
+                      .width(30)
                       .aspectRatio(1)
                       .borderRadius(5)
                       .geometryTransition("cover_overlay")
@@ -1209,16 +1322,16 @@ struct Index {
                         step: 3,
                         src: this.nowPlayingSong?.title
                       })
-                        .fontSize(18)
+                        .fontSize(15)
                         .fontColor($r('app.color.font'))
                       Marquee({
                         start: true,
                         step: 3,
                         src: this.nowPlayingSong?.artist + " - " + this.nowPlayingSong?.album
                       })
-                        .fontSize(15)
+                        .fontSize(12)
                         .fontColor($r('app.color.font_secondary'))
-                        .margin({ top: 5 })
+                        .margin({ top: 2 })
                     }
                     .margin({ left: 10, right: 10 })
                     .alignItems(HorizontalAlign.Start)
@@ -1232,37 +1345,40 @@ struct Index {
                   Row() {
                     Button({ type: ButtonType.Circle }) {
                       Image($r('app.media.prev'))
-                        .width(30)
-                        .height(30)
+                        .width(25)
+                        .height(25)
                     }
-                    .width(35)
-                    .height(35)
+                    .width(30)
+                    .height(30)
                     .backgroundColor(Color.Transparent)
                     .onClick(async () => {
                       await this.avPlayer!.reset();
-                      if (this.nowPlayingIndex === 0) {
-                        this.nowPlayingIndex = this.nowPlayingList.length - 1
-                      } else {
-                        this.nowPlayingIndex -= 1
+                      if (this.nowPlayingList.length > 0) {
+                        if (this.nowPlayingIndex === 0) {
+                          this.nowPlayingIndex = this.nowPlayingList.length - 1
+                        } else {
+                          this.nowPlayingIndex -= 1
+                        }
+                        this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
                       }
-                      this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-                      this.nowPlayingLyrics =
-                        await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-                      if (this.nowPlayingLyrics !== undefined) {
-                        this.groupLyrics()
+                      if (this.nowPlayingSong) {
+                        this.nowPlayingLyrics =
+                          await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
+                        if (this.nowPlayingLyrics !== undefined) {
+                          this.groupLyrics()
+                        }
+                        this.avPlayer!.url =
+                          this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
                       }
-                      this.avPlayer!.url =
-                        this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
                     })
-
                     Stack() {
                       Progress({
                         value: this.nowPlayedTime / this.nowPlayingSong?.duration! * 100,
                         total: 100,
                         type: ProgressType.Ring
                       })
-                        .width(45)
-                        .height(45)
+                        .width(30)
+                        .height(30)
                         .color($r('app.color.progress'))
                         .backgroundColor($r('app.color.progress_background'))
                         .style({
@@ -1271,11 +1387,11 @@ struct Index {
 
                       Button({ type: ButtonType.Circle }) {
                         Image(this.isPlaying === true ? $r('app.media.play') : $r('app.media.pause'))
-                          .width(25)
-                          .height(25)
+                          .width(15)
+                          .height(15)
                       }
-                      .width(45)
-                      .height(45)
+                      .width(20)
+                      .height(20)
                       .backgroundColor(Color.Transparent)
                       .onClick(() => {
                         this.isPlaying = !this.isPlaying
@@ -1297,27 +1413,53 @@ struct Index {
 
                     Button({ type: ButtonType.Circle }) {
                       Image($r('app.media.next'))
-                        .width(30)
-                        .height(30)
+                        .width(25)
+                        .height(25)
                     }
-                    .width(35)
-                    .height(35)
+                    .width(30)
+                    .height(30)
                     .backgroundColor(Color.Transparent)
                     .onClick(async () => {
                       await this.avPlayer!.reset();
-                      if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
-                        this.nowPlayingIndex = 0
-                      } else {
-                        this.nowPlayingIndex += 1
+                      if (this.nowPlayingList.length > 0) {
+                        if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
+                          this.nowPlayingIndex = 0
+                        } else {
+                          this.nowPlayingIndex += 1
+                        }
+                        this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
                       }
-                      this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-                      this.nowPlayingLyrics =
-                        await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-                      if (this.nowPlayingLyrics !== undefined) {
-                        this.groupLyrics()
+                      if (this.nowPlayingSong) {
+                        this.nowPlayingLyrics =
+                          await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
+                        if (this.nowPlayingLyrics !== undefined) {
+                          this.groupLyrics()
+                        }
+                        this.avPlayer!.url =
+                          this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
                       }
-                      this.avPlayer!.url =
-                        this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
+                    })
+
+                    Button({ type: ButtonType.Circle }) {
+                      Image($r('app.media.ic_player_list'))
+                        .width(25)
+                        .height(25)
+                    }
+                    .width(30)
+                    .height(30)
+                    .backgroundColor(Color.Transparent)
+                    .onClick(() => {
+                      this.showList = true
+                    })
+                    .bindSheet($$this.showList, this.listBuilder, {
+                      showClose: false,
+                      height: SheetSize.FIT_CONTENT,
+                      width: this.sidebarType === SideBarContainerType.Embed ? 600 : '100%',
+                      preferType: SheetType.BOTTOM,
+                      backgroundColor: $r('app.color.content_background'),
+                      title: {
+                        title: '播放队列'
+                      }
                     })
                   }
                   .width(125)
@@ -1360,20 +1502,20 @@ struct Index {
                     })
                 }
                 .opacity(this.showPlay ? 1 : 0)
-                .zIndex(4)
+                .zIndex(1)
               }
             }
             .width(this.displayWidth)
-            .height(this.showPlay ? '100%' : 55)
+            .height(this.showPlay ? '100%' : 45)
             .justifyContent(FlexAlign.Center)
             .backgroundBlurStyle(this.showPlay ? BlurStyle.NONE : BlurStyle.COMPONENT_THICK)
             .position({
-              bottom: this.showPlay? 0: 60 ,
+              bottom: this.showPlay? 0: 50 ,
               right: 0
             })
             .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.Hidden)
             .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: Curve.Ease, duration: 600 }))
-            .zIndex(5)
+            .zIndex(4)
           }
 
           Column()

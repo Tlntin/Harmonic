@@ -278,9 +278,9 @@ export default struct Play {
 
   @Builder
   AVCastBuilder(): void {
-    Image($r('app.media.radiowave'))
-      .width(30)
-      .height(30)
+    Image($r('app.media.ic_broadcast'))
+      .width(25)
+      .height(25)
   }
 
   @Builder
@@ -512,111 +512,6 @@ export default struct Play {
       })
 
       Button({ type: ButtonType.Normal }) {
-        Text("下载歌曲")
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .fontSize(18)
-          .fontColor($r('app.color.font'))
-      }
-      .width('100%')
-      .height(60)
-      .borderRadius(10)
-      .padding({ left: 20, right: 20 })
-      .backgroundColor($r('app.color.bar_background'))
-      .onClick(async () => {
-        this.showMore = false
-        try {
-          let sanPath = this.context!.filesDir + `/${this.nowPlayingSong!.title}.${this.nowPlayingSong!.suffix}`;
-          let res = fs.accessSync(sanPath)
-          if (res === true) {
-            fs.unlinkSync(sanPath);
-          }
-          request.downloadFile(this.context, {
-            url: this.baseURL + '/rest/download' + this.auth + `&id=${this.nowPlayingSong!.id}`,
-            filePath: sanPath
-          }).then((downloadTask: request.DownloadTask) => {
-            downloadTask.on('complete', () => {
-              console.info('下载完成');
-              const documentSaveOptions = new picker.DocumentSaveOptions();
-              documentSaveOptions.pickerMode = picker.DocumentPickerMode.DOWNLOAD
-              const documentViewPicker = new picker.DocumentViewPicker;
-              documentViewPicker.save(documentSaveOptions)
-                .then(async (documentSaveResult) => {
-                  let uri = documentSaveResult[0];
-                  let path: string = new fileUri.FileUri(uri).path
-                  if (this.collate) {
-                    fs.mkdirSync(path + `/${this.nowPlayingSong!.artist.replace(/\//g, "&")}`)
-                    fs.mkdirSync(path +
-                      `/${this.nowPlayingSong!.artist.replace(/\//g, "&")}/${this.nowPlayingSong!.album}`)
-                    path += `/${this.nowPlayingSong!.artist.replace(/\//g, "&")}/${this.nowPlayingSong!.album}`
-                  }
-                  let filePath: string = path + `/${this.nowPlayingSong!.title}.${this.nowPlayingSong!.suffix}`;
-                  let sanFile = fs.openSync(sanPath, fs.OpenMode.READ_ONLY)
-                  let pubFile = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
-                  fs.copyFileSync(sanFile.fd, pubFile.fd)
-                  fs.closeSync(sanFile.fd)
-                  fs.closeSync(pubFile.fd)
-                  fs.unlinkSync(sanPath);
-                  this.uiContext!.getPromptAction().showToast({
-                    message: '下载成功！',
-                    duration: 500
-                  });
-                }).catch((err: Error) => {
-                console.error(`调用documentPicker.select失败, message is ${err.message}`);
-              })
-            })
-          }).catch((err: BusinessError) => {
-            console.error(`下载失败, code is ${err.code}, 1message is ${err.message}`);
-          });
-        } catch (error) {
-          this.uiContext!.getPromptAction().showToast({
-            message: '下载失败！',
-            duration: 500
-          });
-        }
-      })
-
-      Button({ type: ButtonType.Normal }) {
-        Text("分享歌曲")
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .fontSize(18)
-          .fontColor($r('app.color.font'))
-      }
-      .width('100%')
-      .height(60)
-      .borderRadius(10)
-      .padding({ left: 20, right: 20 })
-      .backgroundColor($r('app.color.bar_background'))
-      .onClick(async () => {
-        this.showMore = false
-        let url = await createShare(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-        if (url !== undefined) {
-          let shareData: systemShare.SharedData = new systemShare.SharedData({
-            utd: utd.UniformDataType.HYPERLINK,
-            content: url,
-            description: this.nowPlayingSong!.title + " - " + this.nowPlayingSong!.artist,
-            thumbnail: new Uint8Array(await getCover(this.baseURL, this.username, this.password,
-              this.nowPlayingSong!.id, 128))
-          });
-          let controller: systemShare.ShareController = new systemShare.ShareController(shareData);
-          controller.show(this.context, {
-            selectionMode: systemShare.SelectionMode.SINGLE,
-            previewMode: systemShare.SharePreviewMode.DEFAULT,
-          }).then(() => {
-            console.info('分享成功。');
-          }).catch((error: BusinessError) => {
-            console.error(`分享失败，code: ${error.code}, message: ${error.message}`);
-          });
-        } else {
-          this.uiContext!.getPromptAction().showToast({
-            message: '创建分享链接失败，请检查网络！',
-            duration: 500
-          });
-        }
-      })
-
-      Button({ type: ButtonType.Normal }) {
         Text("艺术家：" + this.nowPlayingSong?.artist)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -692,8 +587,8 @@ export default struct Play {
             Row() {
               Button({ type: ButtonType.Circle }) {
                 Image($r('app.media.down'))
-                  .width(30)
-                  .height(30)
+                  .width(25)
+                  .height(25)
               }
               .width(40)
               .height(40)
@@ -722,103 +617,46 @@ export default struct Play {
               .backgroundColor($r('app.color.content_background'))
               .visibility(this.sleepTime > 0 ? Visibility.Visible : Visibility.None)
 
+
               Button({ type: ButtonType.Circle }) {
-                AVCastPicker({
-                  customPicker: (): void => this.AVCastBuilder()
-                })
-                  .width('100%')
-                  .height('100%')
+                Image($r("app.media.ic_share"))
+                  .size({width: 25, height: 25})
               }
-              .width(40)
               .height(40)
-              .borderRadius(10)
+              .width(40)
+              .backgroundColor($r('app.color.bar_background'))
               .margin({ right: 25 })
-              .backgroundColor(Color.Transparent)
+              .onClick(async () => {
+                this.showMore = false
+                let url = await createShare(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
+                if (url !== undefined) {
+                  let shareData: systemShare.SharedData = new systemShare.SharedData({
+                    utd: utd.UniformDataType.HYPERLINK,
+                    content: url,
+                    description: this.nowPlayingSong!.title + " - " + this.nowPlayingSong!.artist,
+                    thumbnail: new Uint8Array(await getCover(this.baseURL, this.username, this.password,
+                      this.nowPlayingSong!.id, 128))
+                  });
+                  let controller: systemShare.ShareController = new systemShare.ShareController(shareData);
+                  controller.show(this.context, {
+                    selectionMode: systemShare.SelectionMode.SINGLE,
+                    previewMode: systemShare.SharePreviewMode.DEFAULT,
+                  }).then(() => {
+                    console.info('分享成功。');
+                  }).catch((error: BusinessError) => {
+                    console.error(`分享失败，code: ${error.code}, message: ${error.message}`);
+                  });
+                } else {
+                  this.uiContext!.getPromptAction().showToast({
+                    message: '创建分享链接失败，请检查网络！',
+                    duration: 500
+                  });
+                }
+              })
             }
             .width("100%")
             .justifyContent(FlexAlign.SpaceBetween)
             .padding({ top: deviceTypeInfo === '2in1' && this.sidebarType === SideBarContainerType.Overlay ? 60 : 20 })
-
-            Row() {
-              Column() {
-                Marquee({
-                  start: true,
-                  step: 3,
-                  src: this.nowPlayingSong?.title
-                })
-                  .fontSize(28)
-                  .fontColor($r('app.color.font'))
-                  .fontWeight(FontWeight.Medium)
-                Text(this.nowPlayingSong?.artist)
-                  .fontSize(18)
-                  .fontColor($r('app.color.font'))
-                  .margin({ top: 5 })
-                  .maxLines(1)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-              }
-              .width("100%")
-              .layoutWeight(1)
-              .margin({ right: 20 })
-              .alignItems(HorizontalAlign.Start)
-
-              Button() {
-                SymbolGlyph(this.nowPlayingSong?.starred !== undefined ? $r('sys.symbol.heart_fill') :
-                $r('sys.symbol.heart'))
-                  .fontSize(26)
-                  .fontColor([$r('app.color.font')])
-              }
-              .width(40)
-              .height(40)
-              .backgroundColor(Color.Transparent)
-              .onClick(async () => {
-                if (this.nowPlayingSong?.starred !== undefined) {
-                  let starStatus = await unstar(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-                  if (starStatus === true) {
-                    this.uiContext!.getPromptAction().showToast({
-                      message: '取消收藏成功！',
-                      duration: 500
-                    });
-                    this.nowPlayingSong.starred = undefined
-                    if (this.isPlaying === true) {
-                      await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
-                    } else {
-                      await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
-                    }
-                  } else {
-                    this.uiContext!.getPromptAction().showToast({
-                      message: '取消收藏失败，请检查网络！',
-                      duration: 500
-                    });
-                  }
-                } else {
-                  let starStatus = await star(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-                  if (starStatus === true) {
-                    this.uiContext!.getPromptAction().showToast({
-                      message: '收藏成功！',
-                      duration: 500
-                    });
-                    let tmp_song: Song | undefined =
-                      await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-                    if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-                      this.nowPlayingSong!.starred = tmp_song.starred
-                    }
-                    if (this.isPlaying === true) {
-                      await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
-                    } else {
-                      await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
-                    }
-                  } else {
-                    this.uiContext!.getPromptAction().showToast({
-                      message: '收藏失败，请检查网络！',
-                      duration: 500
-                    });
-                  }
-                }
-              })
-            }
-            .width("80%")
-            .justifyContent(FlexAlign.SpaceBetween)
-            .padding({ top: 20, bottom: 20 })
 
             if (this.sidebarType === SideBarContainerType.Overlay) {
               Column() {
@@ -829,12 +667,95 @@ export default struct Play {
                         loadSrc:this.baseURL + this.getCoverUrl + this.auth + `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`,
                         placeholderSrc: $rawfile('nocover.png'),
                         errorholderSrc:$rawfile('nocover.png') ,
-                        objectFit: ImageFit.Contain
+                        objectFit: ImageFit.Contain,
+                        border: {radius: 10}
                       }
                     })
-                      .height('100%')
+                      .height(320)
                       .aspectRatio(1)
                       .borderRadius(10)
+
+                    Column() {
+                      Row() {
+                        Marquee({
+                          start: true,
+                          step: 3,
+                          src: this.nowPlayingSong?.title
+                        })
+                          .fontSize(24)
+                          .fontColor($r('app.color.font'))
+                          .fontWeight(FontWeight.Medium)
+
+                        Button() {
+                          SymbolGlyph(this.nowPlayingSong?.starred !== undefined ? $r('sys.symbol.heart_fill') :
+                            $r('sys.symbol.heart'))
+                            .fontSize(26)
+                            .fontColor([$r('app.color.font')])
+                        }
+                        .width(40)
+                        .height(40)
+                        .backgroundColor(Color.Transparent)
+                        .onClick(async () => {
+                          if (this.nowPlayingSong?.starred !== undefined) {
+                            let starStatus = await unstar(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
+                            if (starStatus === true) {
+                              this.uiContext!.getPromptAction().showToast({
+                                message: '取消收藏成功！',
+                                duration: 500
+                              });
+                              this.nowPlayingSong.starred = undefined
+                              if (this.isPlaying === true) {
+                                await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
+                              } else {
+                                await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+                              }
+                            } else {
+                              this.uiContext!.getPromptAction().showToast({
+                                message: '取消收藏失败，请检查网络！',
+                                duration: 500
+                              });
+                            }
+                          } else {
+                            let starStatus = await star(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
+                            if (starStatus === true) {
+                              this.uiContext!.getPromptAction().showToast({
+                                message: '收藏成功！',
+                                duration: 500
+                              });
+                              let tmp_song: Song | undefined =
+                                await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
+                              if (tmp_song !== undefined && tmp_song.starred !== undefined) {
+                                this.nowPlayingSong!.starred = tmp_song.starred
+                              }
+                              if (this.isPlaying === true) {
+                                await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
+                              } else {
+                                await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+                              }
+                            } else {
+                              this.uiContext!.getPromptAction().showToast({
+                                message: '收藏失败，请检查网络！',
+                                duration: 500
+                              });
+                            }
+                          }
+                        })
+                      }
+                      .width("90%")
+                      //.layoutWeight(1)
+                      .margin({ right: 20 })
+                      .justifyContent(FlexAlign.SpaceBetween)
+
+                      Text(this.nowPlayingSong?.artist)
+                        .fontSize(16)
+                        .fontColor($r('app.color.font'))
+                        .margin({ top: 5 })
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    }
+                    .width("90%")
+                    .alignItems(HorizontalAlign.Start)
+                    .padding({ top: 20, bottom: 20, left: "10%", right: "10%"})
                   }
                   .width('100%')
                   .height('100%')
@@ -845,6 +766,41 @@ export default struct Play {
                   })
 
                   Column() {
+                    Row() {
+                      ImageKnifeComponent({
+                        imageKnifeOption: {
+                          loadSrc: this.baseURL + this.getCoverUrl + this.auth +
+                            `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`,
+                          placeholderSrc: $rawfile('nocover.png'),
+                          errorholderSrc: $rawfile('nocover.png'),
+                          objectFit: ImageFit.Contain,
+                          border: {radius: 10}
+                        }
+                      })
+                        .height(40)
+                        .aspectRatio(1)
+                        .borderRadius(10)
+                      Column() {
+                        Column() {
+                          Text(this.nowPlayingSong?.title)
+                            .fontSize(16)
+                            .fontColor($r('app.color.font'))
+                            .maxLines(1)
+                            .textOverflow({ overflow: TextOverflow.Ellipsis })
+                            .width("100%")
+                          Text(this.nowPlayingSong?.artist)
+                            .fontSize(12)
+                            .fontColor($r('app.color.font_secondary'))
+                            .margin({ top: 2 })
+                            .maxLines(1)
+                            .textOverflow({ overflow: TextOverflow.Ellipsis })
+                            .width("100%")
+                        }
+                      }.padding({left: 10})
+                      .align(Alignment.Start)
+                    }.align(Alignment.Start)
+                    .width("80%")
+                    .padding({left: "5%", right: "5%"})
                     List({ scroller: this.lyricsScroller }) {
                       if (this.nowPlayingLyrics !== undefined && this.nowPlayingLyricsByGroup.length > 0) {
                         ForEach(this.nowPlayingLyricsByGroup, (group: Line[], index) => {
@@ -911,7 +867,8 @@ export default struct Play {
                 .itemSpace(20)
                 .geometryTransition("cover_overlay")
                 .loop(false)
-                .height(this.displayHeight * 0.66 - 230 > this.displayWidth * 0.84 ? this.displayWidth * 0.84 : this.displayHeight * 0.66 - 230)
+                // .height(this.displayHeight * 0.66 > this.displayWidth * 0.84 ? this.displayWidth * 0.84 : this.displayHeight * 0.66)
+                .height("60%")
                 .aspectRatio(1)
                 .aspectRatio(1)
                 .indicator(this.indicatorController)
@@ -919,6 +876,7 @@ export default struct Play {
                 IndicatorComponent(this.indicatorController)
                   .style(
                     new DotIndicator()
+                      .top(0)
                       .selectedColor($r('app.color.indicator'))
                   )
                   .margin({ top: 10 })
@@ -948,20 +906,6 @@ export default struct Play {
 
             Column() {
               Column() {
-                Row() {
-                  Text(this.nowPlayingSong ? formatDuration(this.sliderValue * this.nowPlayingSong.duration / 100) : "")
-                    .fontSize(16)
-                    .fontColor($r('app.color.font'))
-                    .fontWeight(FontWeight.Medium)
-                  Text(formatDuration(this.nowPlayingSong?.duration!))
-                    .fontSize(16)
-                    .fontColor($r('app.color.font'))
-                    .fontWeight(FontWeight.Medium)
-                }
-                .width('100%')
-                .height(10)
-                .justifyContent(FlexAlign.SpaceBetween)
-
                 Slider({
                   value: $$this.sliderValue,
                   min: 0,
@@ -970,6 +914,7 @@ export default struct Play {
                   style: SliderStyle.NONE
                 })
                   .width('100%')
+                  .height(10)
                   .trackThickness(5)
                   .selectedColor($r('app.color.progress'))
                   .sliderInteractionMode(SliderInteraction.SLIDE_AND_CLICK_UP)
@@ -981,43 +926,80 @@ export default struct Play {
                       this.avPlayer!.seek(value * this.nowPlayingSong!.duration * 10)
                     }
                   })
+
+                Row() {
+                  Text(this.nowPlayingSong ? formatDuration(this.sliderValue * this.nowPlayingSong.duration / 100) : "")
+                    .fontSize(12)
+                    .fontColor($r('app.color.font'))
+                    .fontWeight(FontWeight.Medium)
+                  Text(formatDuration(this.nowPlayingSong?.duration!))
+                    .fontSize(12)
+                    .fontColor($r('app.color.font'))
+                    .fontWeight(FontWeight.Medium)
+                }
+                .width('100%')
+                .height(5)
+                .justifyContent(FlexAlign.SpaceBetween)
               }
               .width('100%')
               .visibility(this.displayHeight > 300 ? Visibility.Visible : Visibility.None)
+              .padding({top: 50})
 
               Row() {
+                Button({ type: ButtonType.Circle }) {
+                  Image(this.playModeIcon)
+                    .width(25)
+                    .height(25)
+                }
+                .width(40)
+                .height(40)
+                .backgroundColor(Color.Transparent)
+                .onClick(async () => {
+                  if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SINGLE) {
+                    this.playMode = AVSessionManager.LoopMode.LOOP_MODE_LIST
+                  } else if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_LIST) {
+                    this.playMode = AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE
+                  } else {
+                    this.playMode = AVSessionManager.LoopMode.LOOP_MODE_SINGLE
+                  }
+                })
+
                 Button({ type: ButtonType.Circle }) {
                   Image($r('app.media.prev'))
                     .width(45)
                     .height(45)
                 }
-                .width(55)
-                .height(55)
+                .width(40)
+                .height(40)
                 .backgroundColor(Color.Transparent)
                 .onClick(async () => {
                   await this.avPlayer!.reset();
-                  if (this.nowPlayingIndex === 0) {
-                    this.nowPlayingIndex = this.nowPlayingList.length - 1
-                  } else {
-                    this.nowPlayingIndex -= 1
+                  if (this.nowPlayingList.length > 0) {
+                    if (this.nowPlayingIndex === 0) {
+                      this.nowPlayingIndex = this.nowPlayingList.length - 1
+                    } else {
+                      this.nowPlayingIndex -= 1
+                    }
+                    this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
                   }
-                  this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-                  this.nowPlayingLyrics =
-                    await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-                  if (this.nowPlayingLyrics !== undefined) {
-                    this.groupLyrics()
+                  if (this.nowPlayingSong) {
+                    this.nowPlayingLyrics =
+                      await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
+                    if (this.nowPlayingLyrics !== undefined) {
+                      this.groupLyrics()
+                    }
+                    this.avPlayer!.url =
+                      this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
                   }
-                  this.avPlayer!.url =
-                    this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
                 })
 
                 Button({ type: ButtonType.Circle }) {
                   Image(this.isPlaying === true ? $r('app.media.play') : $r('app.media.pause'))
-                    .width(47)
-                    .height(47)
+                    .width(45)
+                    .height(45)
                 }
-                .width(70)
-                .height(70)
+                .width(40)
+                .height(40)
                 .backgroundColor(Color.Transparent)
                 .onClick(() => {
                   this.isPlaying = !this.isPlaying
@@ -1041,73 +1023,32 @@ export default struct Play {
                     .width(45)
                     .height(45)
                 }
-                .width(55)
-                .height(55)
+                .width(40)
+                .height(40)
                 .backgroundColor(Color.Transparent)
                 .onClick(async () => {
                   await this.avPlayer!.reset();
-                  if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
-                    this.nowPlayingIndex = 0
-                  } else {
-                    this.nowPlayingIndex += 1
+                  if (this.nowPlayingList.length > 0) {
+                    if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
+                      this.nowPlayingIndex = 0
+                    } else {
+                      this.nowPlayingIndex += 1
+                    }
+                    this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
                   }
-                  this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-                  this.nowPlayingLyrics =
-                    await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-                  if (this.nowPlayingLyrics !== undefined) {
-                    this.groupLyrics()
-                  }
-                  this.avPlayer!.url =
-                    this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
-                })
-              }
-              .width('80%')
-              .alignItems(VerticalAlign.Center)
-              .justifyContent(FlexAlign.SpaceBetween)
-
-              Row() {
-                Button({ type: ButtonType.Circle }) {
-                  Image(this.playModeIcon)
-                    .width(30)
-                    .height(30)
-                }
-                .width(40)
-                .height(40)
-                .backgroundColor(Color.Transparent)
-                .onClick(async () => {
-                  if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SINGLE) {
-                    this.playMode = AVSessionManager.LoopMode.LOOP_MODE_LIST
-                  } else if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_LIST) {
-                    this.playMode = AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE
-                  } else {
-                    this.playMode = AVSessionManager.LoopMode.LOOP_MODE_SINGLE
+                  if (this.nowPlayingSong) {
+                    this.nowPlayingLyrics =
+                      await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
+                    if (this.nowPlayingLyrics !== undefined) {
+                      this.groupLyrics()
+                    }
+                    this.avPlayer!.url =
+                      this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
                   }
                 })
 
                 Button({ type: ButtonType.Circle }) {
-                  Image($r('app.media.sleep'))
-                    .width(30)
-                    .height(30)
-                }
-                .width(40)
-                .height(40)
-                .backgroundColor(Color.Transparent)
-                .onClick(() => {
-                  this.showSleep = true
-                })
-                .bindSheet($$this.showSleep, this.sleepBuilder, {
-                  showClose: false,
-                  height: SheetSize.FIT_CONTENT,
-                  width: this.sidebarType === SideBarContainerType.Embed ? 600 : '100%',
-                  preferType: SheetType.BOTTOM,
-                  backgroundColor: $r('app.color.content_background'),
-                  title: {
-                    title: '睡眠定时'
-                  }
-                })
-
-                Button({ type: ButtonType.Circle }) {
-                  Image($r('app.media.list'))
+                  Image($r('app.media.ic_player_list'))
                     .width(30)
                     .height(30)
                 }
@@ -1128,10 +1069,113 @@ export default struct Play {
                   }
                 })
 
+              }
+              .width('100%')
+              .alignItems(VerticalAlign.Center)
+              .justifyContent(FlexAlign.SpaceBetween)
+
+              Row() {
+                Button({ type: ButtonType.Circle }) {
+
+                  AVCastPicker({
+                    customPicker: (): void => this.AVCastBuilder()
+                  })
+
+                    .width('100%')
+                    .height('100%')
+                }
+                .width(40)
+                .height(40)
+                .borderRadius(10)
+                .backgroundColor(Color.Transparent)
+
+                Button({ type: ButtonType.Circle }) {
+                  Image($r('app.media.sleep'))
+                    .width(25)
+                    .height(25)
+                }
+                .width(40)
+                .height(40)
+                .backgroundColor(Color.Transparent)
+                .onClick(() => {
+                  this.showSleep = true
+                })
+                .bindSheet($$this.showSleep, this.sleepBuilder, {
+                  showClose: false,
+                  height: SheetSize.FIT_CONTENT,
+                  width: this.sidebarType === SideBarContainerType.Embed ? 600 : '100%',
+                  preferType: SheetType.BOTTOM,
+                  backgroundColor: $r('app.color.content_background'),
+                  title: {
+                    title: '睡眠定时'
+                  }
+                })
+
+                Button({ type: ButtonType.Circle }) {
+                  Image($r('app.media.ic_download'))
+                    .width(25)
+                    .height(25)
+                }
+                .width(40)
+                .height(40)
+                .backgroundColor(Color.Transparent)
+                .onClick(async () => {
+                  this.showMore = false
+                  try {
+                    let sanPath = this.context!.filesDir + `/${this.nowPlayingSong!.title}.${this.nowPlayingSong!.suffix}`;
+                    let res = fs.accessSync(sanPath)
+                    if (res === true) {
+                      fs.unlinkSync(sanPath);
+                    }
+                    request.downloadFile(this.context, {
+                      url: this.baseURL + '/rest/download' + this.auth + `&id=${this.nowPlayingSong!.id}`,
+                      filePath: sanPath
+                    }).then((downloadTask: request.DownloadTask) => {
+                      downloadTask.on('complete', () => {
+                        console.info('下载完成');
+                        const documentSaveOptions = new picker.DocumentSaveOptions();
+                        documentSaveOptions.pickerMode = picker.DocumentPickerMode.DOWNLOAD
+                        const documentViewPicker = new picker.DocumentViewPicker;
+                        documentViewPicker.save(documentSaveOptions)
+                          .then(async (documentSaveResult) => {
+                            let uri = documentSaveResult[0];
+                            let path: string = new fileUri.FileUri(uri).path
+                            if (this.collate) {
+                              fs.mkdirSync(path + `/${this.nowPlayingSong!.artist.replace(/\//g, "&")}`)
+                              fs.mkdirSync(path +
+                                `/${this.nowPlayingSong!.artist.replace(/\//g, "&")}/${this.nowPlayingSong!.album}`)
+                              path += `/${this.nowPlayingSong!.artist.replace(/\//g, "&")}/${this.nowPlayingSong!.album}`
+                            }
+                            let filePath: string = path + `/${this.nowPlayingSong!.title}.${this.nowPlayingSong!.suffix}`;
+                            let sanFile = fs.openSync(sanPath, fs.OpenMode.READ_ONLY)
+                            let pubFile = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE | fs.OpenMode.TRUNC)
+                            fs.copyFileSync(sanFile.fd, pubFile.fd)
+                            fs.closeSync(sanFile.fd)
+                            fs.closeSync(pubFile.fd)
+                            fs.unlinkSync(sanPath);
+                            this.uiContext!.getPromptAction().showToast({
+                              message: '下载成功！',
+                              duration: 500
+                            });
+                          }).catch((err: Error) => {
+                          console.error(`调用documentPicker.select失败, message is ${err.message}`);
+                        })
+                      })
+                    }).catch((err: BusinessError) => {
+                      console.error(`下载失败, code is ${err.code}, 1message is ${err.message}`);
+                    });
+                  } catch (error) {
+                    this.uiContext!.getPromptAction().showToast({
+                      message: '下载失败！',
+                      duration: 500
+                    });
+                  }
+                })
+
                 Button({ type: ButtonType.Circle }) {
                   Image($r('app.media.more'))
-                    .width(30)
-                    .height(30)
+                    .width(25)
+                    .height(25)
                 }
                 .width(40)
                 .height(40)
