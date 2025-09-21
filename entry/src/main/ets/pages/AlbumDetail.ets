@@ -272,6 +272,12 @@ export default struct AlbumDetail {
                     }
                     this.getNowPlayingIndex(song, this.nowPlayingList)
                     this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
+                    this.getUIContext()?.animateTo({
+                      duration: 600,
+                      curve: Curve.Friction
+                    }, () => {
+                      this.showPlay = true
+                    })
                   })
                   .gesture(
                     LongPressGesture()
@@ -345,6 +351,12 @@ export default struct AlbumDetail {
                 }
                 this.getNowPlayingIndex(song, this.nowPlayingList)
                 this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
+                this.getUIContext()?.animateTo({
+                  duration: 600,
+                  curve: Curve.Friction
+                }, () => {
+                  this.showPlay = true
+                })
               })
               .gesture(
                 LongPressGesture()

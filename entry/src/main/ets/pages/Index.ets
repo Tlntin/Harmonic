@@ -126,7 +126,7 @@ struct Index {
   @Provide searchArtists: Artist[] = []
   @Provide showLibrary: boolean = false
   @Provide closePlay: boolean = false
-  @Provide @Watch('updatePage') needUpdate: boolean = false
+  @Provide @Watch('updatePage') needUpdate: boolean = false;
   @State coverSize: number = 64
   @State themeIcon: Resource = $r('app.media.auto')
   @State sideBarWidth: number = 240
@@ -697,10 +697,16 @@ struct Index {
           this.randomAlbums = []
           this.starredAlbums = []
           this.starredArtists = []
+          if (this.ND_token.length === 0 || this.ND_id.length === 0) {
+            await this.loginOrKeepAlive();
+          }
           let result1 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 20, "DESC", "play_date");
           if (result1) {
             this.songCount = result1.songCount;
             this.recentSongs.push(...result1.songs);
+            console.log(`==/get recent songs / number: ${result1.songs.length}`)
+          } else {
+            console.log("==/get recent songs failed/")
           }
           let result2 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 20, "DESC", "createdAt");
           if (result2) {
@@ -1159,6 +1165,8 @@ struct Index {
     if (this.downloadDir === '') {
       this.createDir()
     }
+    // login or keep-alive
+    await this.loginOrKeepAlive();
     this.avPlayer = await media.createAVPlayer();
     this.setAVPlayerCallback(this.avPlayer!);
     let path = this.context!.filesDir + '/saveState.json';
@@ -1204,8 +1212,7 @@ struct Index {
         this.verse = verse
       })
     }
-    // login or keep-alive
-    await this.loginOrKeepAlive();
+
   }
 
   onBackPress() {
@@ -1468,7 +1475,7 @@ struct Index {
                 }
                 .opacity(this.showPlay ? 0 : 1)
                 .padding({ left: 15, right: 15, bottom: 5 })
-                .visibility(this.nowPage === 0 ? Visibility.Visible : Visibility.Hidden)
+                //.visibility(!this.showPlay ? Visibility.Visible : Visibility.Hidden)
                 .height(50)
                 .backgroundBlurStyle(BlurStyle.Thin,
                   { colorMode: ThemeColorMode.LIGHT, adaptiveColor: AdaptiveColor.DEFAULT, scale: 1.0 }) // 设置模糊相关参数
@@ -1516,7 +1523,7 @@ struct Index {
                     })
                 }
                 .opacity(this.showPlay ? 1 : 0)
-                .zIndex(1)
+                .zIndex(4)
               }
             }
             .width(this.displayWidth)
@@ -1529,7 +1536,7 @@ struct Index {
             })
             .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.Hidden)
             .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: Curve.Ease, duration: 600 }))
-            .zIndex(this.nowPage === 0 ? 4: 0)
+            .zIndex((this.nowPage === 0 || this.showPlay)? 4: 0)
           }
 
           Column()

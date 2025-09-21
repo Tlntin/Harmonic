@@ -272,32 +272,43 @@ export default struct Home {
                         border:{radius: 10}
                       }
                     })
-                      .height('50%')
+                      .height('70%')
                       .aspectRatio(1)
                       .margin(10)
 
-                    Text(`${song.title}`)
-                      .fontSize(16)
-                      .maxLines(1)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    Column() {
+                      Text(`${song.title}`)
+                        .fontSize(14)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .textAlign(TextAlign.Start)
+                        .fontWeight(FontWeight.Medium)
+                        .width("100%")
 
-                    Text(`${song.artist}`)
-                      .fontSize(16)
-                      .maxLines(1)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      Text(`${song.artist}`)
+                        .fontSize(14)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .textAlign(TextAlign.Start)
+                        .fontWeight(FontWeight.Medium)
+                        .width("100%")
+                    }
+                    .padding({ bottom: 2})
+                    .width(120)
                   }
                   .width('auto')
                   .height('100%')
                 }
                 .width('auto')
-                .height('100%')
+                .layoutWeight(4)
+                //.height('100%')
                 .margin({ left: index === 0 ? 10 : 0, right: index === this.recentSongs!.length - 1 ? 10 : 0 })
-                .padding(10)
+                // .padding(10)
                 .animation({ curve: curves.springMotion(0.6, 1) })
                 .borderRadius(10)
                 .backgroundColor(Color.Transparent)
                 .onClick(async () => {
-                  this.playSong(song);
+                  await this.playSong(song);
                 })
               }
             })
@@ -310,7 +321,7 @@ export default struct Home {
           .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .height(this.displayWidth > 1400 ? 270 : 230)
+        .height(this.displayWidth > 1400 ? 290 : 250)
         .visibility(this.showProgress === true || this.recentSongs.length === 0 ? Visibility.None :
         Visibility.Visible)
 

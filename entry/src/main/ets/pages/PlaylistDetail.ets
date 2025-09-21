@@ -248,6 +248,7 @@ export default struct PlaylistDetail {
             .height(80)
             .borderRadius(10)
             .backgroundColor(Color.Transparent)
+            .animation({ curve: curves.springMotion(0.6, 1) })
             .onClick(async () => {
               this.startPlaying = true
               await this.avPlayer!.reset()
@@ -265,6 +266,12 @@ export default struct PlaylistDetail {
               }
               this.getNowPlayingIndex(song, this.nowPlayingList)
               this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
+              this.getUIContext()?.animateTo({
+                duration: 600,
+                curve: Curve.Friction
+              }, () => {
+                this.showPlay = true
+              })
             })
             .gesture(
               LongPressGesture()

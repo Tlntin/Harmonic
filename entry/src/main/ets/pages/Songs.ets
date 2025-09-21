@@ -37,6 +37,7 @@ export default struct Songs {
   @Consume nowPlayingList: ND_Song[]
   @Consume nowPlayingListOriginal: ND_Song[]
   @Consume nowPlayingIndex: number
+  @Consume showPlay: boolean
   @Consume isPlaying: boolean
   @Consume startPlaying: boolean
   @Consume showSidebar: boolean
@@ -361,6 +362,12 @@ export default struct Songs {
                   }
                   this.getNowPlayingIndex(song, this.nowPlayingList)
                   this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
+                  this.getUIContext()?.animateTo({
+                    duration: 600,
+                    curve: Curve.Friction
+                  }, () => {
+                    this.showPlay = true
+                  })
                 })
                 .gesture(
                   LongPressGesture()
