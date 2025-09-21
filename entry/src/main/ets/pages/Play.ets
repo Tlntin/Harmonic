@@ -811,9 +811,9 @@ export default struct Play {
                                   .width('86%')
                                   .height('auto')
                                   .padding({ left: 20, right: 20 })
-                                  .margin({ top: index2 === 0 ? 0 : this.lyricsIndex === index ? 10 : 8 })
-                                  .fontSize(this.displayWidth > 1400 ? 28 : 24)
-                                  .fontWeight(FontWeight.Bold)
+                                  .margin({ top: index2 === 0 ? 0 : this.lyricsIndex === index ? 10 : 5 })
+                                  .fontSize(this.displayWidth > 1400 ? 24 : 20)
+                                  .fontWeight(this.lyricsIndex === index ? FontWeight.Bold: FontWeight.Normal)
                                   .fontColor(this.lyricsIndex === index &&
                                     this.nowPlayingLyrics?.synced === true ?
                                   $r('app.color.font_lyrics') :
