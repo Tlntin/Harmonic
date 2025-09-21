@@ -166,6 +166,7 @@ export default struct Home {
             .width("100%")
             .height(this.displayWidth > 1400 ? 50 : 40)
             .layoutWeight(1)
+            .border({width: 1})
             .borderRadius(10)
             .margin({ left: 20, right: 20 })
             .searchIcon({
@@ -203,6 +204,7 @@ export default struct Home {
             })
         }
         .padding({top: 20})
+        .backgroundColor(Color.Transparent)
         // .margin({ top: 10 })
 
         Column() {

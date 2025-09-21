@@ -487,10 +487,11 @@ export async function createShare(baseURL: string, username: string, password: s
   let currentDate = new Date();
   currentDate.setMonth(currentDate.getMonth() + 1);
   let time = currentDate.getTime();
+  let url = baseURL + '/rest/createShare' + auth + `&id=${id}&expires=${time}`;
+  console.log(`==/createShare/ url=${url}`);
   try {
     const response: AxiosResponse =
-      await axios.post<string, AxiosResponse<string>>(baseURL + '/rest/createShare' + auth +
-        `&id=${id}&expires=${time}`, {
+      await axios.post<string, AxiosResponse<string>>(url, {
         timeout: 10000
       })
     const subsonicResponse: SubsonicResponse = response.data["subsonic-response"]
@@ -499,7 +500,7 @@ export async function createShare(baseURL: string, username: string, password: s
     }
     return undefined
   } catch (error) {
-    console.error(JSON.stringify(error));
+    console.error(`==/createShare/ failed ${JSON.stringify(error)}`);
     return undefined
   }
 }

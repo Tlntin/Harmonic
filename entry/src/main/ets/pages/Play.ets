@@ -624,7 +624,7 @@ export default struct Play {
               }
               .height(40)
               .width(40)
-              .backgroundColor($r('app.color.bar_background'))
+              .backgroundColor(Color.Transparent)
               .margin({ right: 25 })
               .onClick(async () => {
                 this.showMore = false
@@ -648,7 +648,7 @@ export default struct Play {
                   });
                 } else {
                   this.uiContext!.getPromptAction().showToast({
-                    message: '创建分享链接失败，请检查网络！',
+                    message: '创建分享链接失败，网络异常或者服务器未启用文件共享服务！',
                     duration: 500
                   });
                 }
@@ -948,11 +948,11 @@ export default struct Play {
               Row() {
                 Button({ type: ButtonType.Circle }) {
                   Image(this.playModeIcon)
-                    .width(25)
-                    .height(25)
+                    .width(30)
+                    .height(30)
                 }
-                .width(40)
-                .height(40)
+                .width(30)
+                .height(30)
                 .backgroundColor(Color.Transparent)
                 .onClick(async () => {
                   if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SINGLE) {
@@ -966,11 +966,11 @@ export default struct Play {
 
                 Button({ type: ButtonType.Circle }) {
                   Image($r('app.media.prev'))
-                    .width(45)
-                    .height(45)
+                    .width(30)
+                    .height(30)
                 }
-                .width(40)
-                .height(40)
+                .width(30)
+                .height(30)
                 .backgroundColor(Color.Transparent)
                 .onClick(async () => {
                   await this.avPlayer!.reset();
@@ -995,12 +995,17 @@ export default struct Play {
 
                 Button({ type: ButtonType.Circle }) {
                   Image(this.isPlaying === true ? $r('app.media.play') : $r('app.media.pause'))
-                    .width(45)
-                    .height(45)
+                    .height(25)
+                    .height(25)
+                    .border({radius: 25})
+                    .padding({left: this.isPlaying? 0: 5})
+                    .align(Alignment.Center)
+                    //.backgroundColor(Color.Yellow)
                 }
-                .width(40)
-                .height(40)
+                .width(50)
+                .height(50)
                 .backgroundColor(Color.Transparent)
+                .border({width: 2, radius: 50})
                 .onClick(() => {
                   this.isPlaying = !this.isPlaying
                   if (this.isPlaying === false) {
@@ -1020,11 +1025,11 @@ export default struct Play {
 
                 Button({ type: ButtonType.Circle }) {
                   Image($r('app.media.next'))
-                    .width(45)
-                    .height(45)
+                    .width(30)
+                    .height(30)
                 }
-                .width(40)
-                .height(40)
+                .width(30)
+                .height(30)
                 .backgroundColor(Color.Transparent)
                 .onClick(async () => {
                   await this.avPlayer!.reset();
@@ -1052,8 +1057,8 @@ export default struct Play {
                     .width(30)
                     .height(30)
                 }
-                .width(40)
-                .height(40)
+                .width(30)
+                .height(30)
                 .backgroundColor(Color.Transparent)
                 .onClick(() => {
                   this.showList = true
@@ -1084,8 +1089,8 @@ export default struct Play {
                     .width('100%')
                     .height('100%')
                 }
-                .width(40)
-                .height(40)
+                .width(25)
+                .height(25)
                 .borderRadius(10)
                 .backgroundColor(Color.Transparent)
 
@@ -1094,8 +1099,8 @@ export default struct Play {
                     .width(25)
                     .height(25)
                 }
-                .width(40)
-                .height(40)
+                .width(25)
+                .height(25)
                 .backgroundColor(Color.Transparent)
                 .onClick(() => {
                   this.showSleep = true
@@ -1116,8 +1121,8 @@ export default struct Play {
                     .width(25)
                     .height(25)
                 }
-                .width(40)
-                .height(40)
+                .width(25)
+                .height(25)
                 .backgroundColor(Color.Transparent)
                 .onClick(async () => {
                   this.showMore = false
@@ -1177,8 +1182,8 @@ export default struct Play {
                     .width(25)
                     .height(25)
                 }
-                .width(40)
-                .height(40)
+                .width(25)
+                .height(25)
                 .backgroundColor(Color.Transparent)
                 .onClick(() => {
                   this.showMore = true
@@ -1285,6 +1290,9 @@ export default struct Play {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.SpaceAround)
-    .backgroundColor("#ffffff")
+    .backgroundBlurStyle(
+      // BlurStyle.COMPONENT_THIN,
+      BlurStyle.COMPONENT_ULTRA_THIN,
+      { colorMode: ThemeColorMode.LIGHT, adaptiveColor: AdaptiveColor.DEFAULT, scale: 1.0 })
   }
 }

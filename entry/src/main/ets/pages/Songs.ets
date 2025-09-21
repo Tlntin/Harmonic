@@ -222,14 +222,16 @@ export default struct Songs {
             .height(this.displayWidth > 1400 ? 50 : 40)
             .layoutWeight(1)
             .borderRadius(10)
+            .borderWidth(1)
             .margin({ left: 20, right: 20 })
-            .searchIcon({
-              size: 0
-            })
+            // .searchIcon({
+            //   size: 0
+            // })
             .searchButton("搜索", {
               fontSize: this.displayWidth > 1400 ? 20 : 18,
               fontColor: $r('app.color.font'),
-              autoDisable: true
+              autoDisable: true,
+
             })
             .searchIcon(
               {src: $r("app.media.ic_public_search")}
@@ -246,7 +248,7 @@ export default struct Songs {
               color: $r('app.color.font_secondary')
             })
             .enterKeyType(EnterKeyType.Search)
-            .padding({ bottom: 15 })
+            //.padding({ bottom: 15 })
             .onSubmit(async (searchContent: string, event: SubmitEvent) => {
               this.getUIContext().showAlertDialog({message: "功能待开发"})
             })

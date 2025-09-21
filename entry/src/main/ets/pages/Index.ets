@@ -1345,11 +1345,11 @@ struct Index {
                   Row() {
                     Button({ type: ButtonType.Circle }) {
                       Image($r('app.media.prev'))
-                        .width(25)
-                        .height(25)
+                        .width(20)
+                        .height(20)
                     }
-                    .width(30)
-                    .height(30)
+                    .width(20)
+                    .height(20)
                     .backgroundColor(Color.Transparent)
                     .onClick(async () => {
                       await this.avPlayer!.reset();
@@ -1389,9 +1389,10 @@ struct Index {
                         Image(this.isPlaying === true ? $r('app.media.play') : $r('app.media.pause'))
                           .width(15)
                           .height(15)
+                          .padding({left: this.isPlaying?0: 3})
                       }
-                      .width(20)
-                      .height(20)
+                      .width(15)
+                      .height(15)
                       .backgroundColor(Color.Transparent)
                       .onClick(() => {
                         this.isPlaying = !this.isPlaying
@@ -1413,11 +1414,11 @@ struct Index {
 
                     Button({ type: ButtonType.Circle }) {
                       Image($r('app.media.next'))
-                        .width(25)
-                        .height(25)
+                        .width(20)
+                        .height(20)
                     }
-                    .width(30)
-                    .height(30)
+                    .width(20)
+                    .height(20)
                     .backgroundColor(Color.Transparent)
                     .onClick(async () => {
                       await this.avPlayer!.reset();
@@ -1442,11 +1443,11 @@ struct Index {
 
                     Button({ type: ButtonType.Circle }) {
                       Image($r('app.media.ic_player_list'))
-                        .width(25)
-                        .height(25)
+                        .width(20)
+                        .height(20)
                     }
-                    .width(30)
-                    .height(30)
+                    .width(20)
+                    .height(20)
                     .backgroundColor(Color.Transparent)
                     .onClick(() => {
                       this.showList = true
@@ -1467,7 +1468,20 @@ struct Index {
                 }
                 .opacity(this.showPlay ? 0 : 1)
                 .padding({ left: 15, right: 15, bottom: 5 })
-                .zIndex(4)
+                .visibility(this.nowPage === 0 ? Visibility.Visible : Visibility.Hidden)
+                .height(50)
+                .backgroundBlurStyle(BlurStyle.Thin,
+                  { colorMode: ThemeColorMode.LIGHT, adaptiveColor: AdaptiveColor.DEFAULT, scale: 1.0 }) // 设置模糊相关参数
+                .linearGradient({
+                  angle: 90,
+                  colors: [
+                    ['#ffbd94', 0.0],
+                    ['#ffacb9', 0.33],
+                    ['#ffa8d6', 0.67],
+                    ['#d0a9e2', 1.0],
+                  ]
+                })
+                .zIndex(this.nowPage === 0? 4: 0)
                 .onClick(() => {
                   if (this.showPlay === true) {
                     this.showPlay = false
@@ -1506,7 +1520,7 @@ struct Index {
               }
             }
             .width(this.displayWidth)
-            .height(this.showPlay ? '100%' : 45)
+            .height(this.showPlay ? '100%' : 50)
             .justifyContent(FlexAlign.Center)
             .backgroundBlurStyle(this.showPlay ? BlurStyle.NONE : BlurStyle.COMPONENT_THICK)
             .position({
@@ -1515,7 +1529,7 @@ struct Index {
             })
             .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.Hidden)
             .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: Curve.Ease, duration: 600 }))
-            .zIndex(4)
+            .zIndex(this.nowPage === 0 ? 4: 0)
           }
 
           Column()
