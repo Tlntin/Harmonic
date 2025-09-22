@@ -7,17 +7,17 @@ import {
   getArtist,
   getCover,
   getLyrics,
-  getPlaylists,
-  getSong,
   star,
   unstar
 } from '../utils/Api';
-import { Album, Artist, Line, Playlist, Song, StructuredLyric } from '../utils/Interface';
+import { Album, Artist, Line, StructuredLyric } from '../utils/Interface';
+import {ND_Song, ND_Playlist} from '../utils/ND_Interface';
+import {ND_getPlayList} from "../utils/ND_Api"
 import selectPlaylistBuilder from './dialogs/SelectPlaylist';
 import infoBuilder from './dialogs/Info';
 import { systemShare } from '@kit.ShareKit';
 import { uniformTypeDescriptor as utd } from '@kit.ArkData';
-import { common } from '@kit.AbilityKit';
+import { common, ConfigurationConstant} from '@kit.AbilityKit';
 import { BusinessError, request } from '@kit.BasicServicesKit';
 import { fileUri, fileIo as fs, picker } from '@kit.CoreFileKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
@@ -68,13 +68,13 @@ export default struct Play {
   @Consume client: string
   @Consume auth: string
   @Consume getCoverUrl: string
-  @Consume nowPlayingSong: Song | undefined
+  @Consume nowPlayingSong: ND_Song | undefined
   @Consume nowPlayingLyrics: StructuredLyric | undefined
   @Consume nowPlayingLyricsByGroup: Line[][]
-  @Consume nowPlayingList: Song[]
-  @Consume nowPlayingListOriginal: Song[]
+  @Consume nowPlayingList: ND_Song[]
+  @Consume nowPlayingListOriginal: ND_Song[]
   @Consume nowPlayingIndex: number
-  @Consume starredSongs: Song[]
+  @Consume starredSongs: ND_Song[]
   @Consume @Watch('scrollLyrics') lyricsIndex: number
   @Consume @Watch('closePlayPage') closePlay: boolean
   @Consume nowPlayedTime: number
@@ -93,11 +93,13 @@ export default struct Play {
   @Consume session: AVSessionManager.AVSession | undefined
   @Consume selectedPlaylists: boolean[]
   @Consume sidebarType: number
-  @Consume playlists: Playlist[]
+  @Consume playlists: ND_Playlist[]
   @Consume mainWindow: window.Window | undefined
   @Provide selectDeviceHeight: number = 300
   @Consume sliderValue: number
   @Consume sliderMoving: boolean
+  @Consume ND_token: string;
+  @Consume ND_id: string;
   @State showSleep: boolean = false
   @State showList: boolean = false
   @State showMore: boolean = false
@@ -185,7 +187,7 @@ export default struct Play {
     return array;
   }
 
-  getNowPlayingIndex(song: Song, list: Song[]) {
+  getNowPlayingIndex(song: ND_Song, list: ND_Song[]) {
     for (let index = 0; index < list.length; index++) {
       if (list[index].id === song.id) {
         this.nowPlayingIndex = index
@@ -269,10 +271,11 @@ export default struct Play {
     this.mainWindow.on('windowSizeChange', (size) => {
       this.scrollLyrics()
     })
-    let tmp_song: Song | undefined = await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-    if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-      this.nowPlayingSong!.starred = tmp_song.starred
-    }
+    // let tmp_song: Song | undefined = await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
+    // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
+    //   this.nowPlayingSong!.starred = tmp_song.starred
+    // }
+    this.nowPlayingSong!.starred = true;
     this.scrollLyrics()
   }
 
@@ -390,7 +393,7 @@ export default struct Play {
   listBuilder() {
     Column() {
       List({ scroller: this.listScroller }) {
-        ForEach(this.nowPlayingList, (song: Song, index) => {
+        ForEach(this.nowPlayingList, (song: ND_Song, index) => {
           ListItem() {
             Button({ type: ButtonType.Normal }) {
               Row() {
@@ -506,9 +509,13 @@ export default struct Play {
       .onClick(async () => {
         this.showMore = false
         this.selectPlaylist.open()
-        this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-          return Date.parse(b.changed) - Date.parse(a.changed);
-        })
+        // this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
+        //   return Date.parse(b.changed) - Date.parse(a.changed);
+        // })
+        let result4 = await ND_getPlayList(this.baseURL, this.ND_token, this.ND_id);
+        if (result4) {
+          this.playlists = result4;
+        }
       })
 
       Button({ type: ButtonType.Normal }) {
@@ -582,6 +589,27 @@ export default struct Play {
   build() {
     Column() {
       Stack() {
+        Column()
+          .width(this.displayWidth)
+          .height(this.showPlay ? '100%' : 55)
+          .justifyContent(FlexAlign.Center)
+          .backgroundImage(this.baseURL + this.getCoverUrl + this.auth + `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`)
+          .backgroundImageSize(ImageSize.FILL)
+          .backgroundBlurStyle(BlurStyle.BACKGROUND_ULTRA_THICK)
+          .backgroundBrightness({
+            rate: this.context!.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK ? 0.2 : 0.5,
+            lightUpDegree: this.context!.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK ?
+              0.1 :
+              0.5
+          })
+          .opacity(this.showPlay ? 1 : 0)
+          .position({
+            bottom: 0,
+            right: 0
+          })
+          .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.Hidden)
+          .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: Curve.Ease, duration: 600 }))
+
         Row() {
           Column() {
             Row() {
@@ -616,6 +644,19 @@ export default struct Play {
               .borderRadius(10)
               .backgroundColor($r('app.color.content_background'))
               .visibility(this.sleepTime > 0 ? Visibility.Visible : Visibility.None)
+
+
+              Button({ type: ButtonType.Circle }) {
+                Image($r("app.media.ic_similar_songs"))
+                  .size({width: 25, height: 25})
+              }
+              .height(40)
+              .width(40)
+              .backgroundColor(Color.Transparent)
+              .onClick(async ()=>{
+                this.closePlayPage()
+                this.pageStack.pushPathByName("SimilarSongs", null);
+              })
 
 
               Button({ type: ButtonType.Circle }) {
@@ -722,11 +763,12 @@ export default struct Play {
                                 message: '收藏成功！',
                                 duration: 500
                               });
-                              let tmp_song: Song | undefined =
-                                await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-                              if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-                                this.nowPlayingSong!.starred = tmp_song.starred
-                              }
+                              // let tmp_song: ND_Song | undefined =
+                              //   await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
+                              // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
+                              //   this.nowPlayingSong!.starred = tmp_song.starred
+                              // }
+                              this.nowPlayingSong!.starred = true;
                               if (this.isPlaying === true) {
                                 await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
                               } else {

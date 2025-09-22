@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from '@ohos/axios'
 import CryptoJS from '@ohos/crypto-js'
-import { ApiResponse, Artist, LyricsList, Playlist, SubsonicResponse, SearchOption } from './Interface'
+import { ApiResponse, Artist, LyricsList, Playlist, SubsonicResponse, SearchOption} from './Interface'
 
 axios.defaults.headers.post['Content-Type'] = 'application/json'
 
@@ -262,6 +262,29 @@ export async function getSong(baseURL: string, username: string, password: strin
     return subsonicResponse.song
   } catch (error) {
     console.error(`/==getSong/ error: ${JSON.stringify(error)}`);
+    return undefined
+  }
+}
+
+export async function getSimilarSongs(baseURL: string, username: string, password: string, id: string, count: number = 50) {
+  let auth = `?u=${username}&t=${CryptoJS.MD5(password + salt)}&s=${salt}&v=${version}&c=${client}&f=json&count=${count}`
+  let url = baseURL + '/rest/getSimilarSongs' + auth + `&id=${id}`;
+  console.info(`/==getSimilarSong/ url: ${url}`);
+  try {
+    const response: AxiosResponse =
+      await axios.post<string, AxiosResponse<string>>(url, {
+        timeout: 10000
+      })
+    const subsonicResponse: SubsonicResponse = response.data["subsonic-response"]
+    let similarSongs = subsonicResponse.similarSongs;
+    if (similarSongs) {
+      return similarSongs.song;
+    } else {
+      console.error(`/==getSimilarSong/ responseData: ${JSON.stringify(subsonicResponse)}`);
+      return undefined;
+    }
+  } catch (error) {
+    console.error(`/==getSimilarSong/ error: ${JSON.stringify(error)}`);
     return undefined
   }
 }

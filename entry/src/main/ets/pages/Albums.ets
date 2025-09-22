@@ -1,4 +1,5 @@
-import { Album, Song, MusicFolder} from '../utils/Interface';
+import { Album, MusicFolder} from '../utils/Interface';
+import {ND_Song} from "../utils/ND_Interface";
 import {getAlbumList} from '../utils/Api';
 import { curves } from '@kit.ArkUI';
 import { ImageKnifeComponent } from '@ohos/imageknife'
@@ -25,7 +26,7 @@ export default struct Albums {
   @Consume startPlaying: boolean
   @Consume showSidebar: boolean
   @Consume serverStatus: boolean
-  @Consume discs: Song[][]
+  @Consume discs: ND_Song[][]
   @Consume displayWidth: number
   @Consume showProgress: boolean
   @Consume needUpdate: boolean

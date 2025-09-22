@@ -16,6 +16,11 @@
       "buildFunction": "SongsBuilder"
     },
     {
+      "name": "SimilarSongs",
+      "pageSourceFile": "src/main/ets/pages/SimilarSongs.ets",
+      "buildFunction": "SimilarSongsBuilder"
+    },
+    {
       "name": "MySetting",
       "pageSourceFile": "src/main/ets/pages/Setting.ets",
       "buildFunction": "SettingBuilder"

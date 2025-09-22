@@ -1,5 +1,5 @@
-import {getPlaylists} from "../utils/Api"
-import {Album, Artist, Song, StructuredLyric, Line, Playlist} from "../utils/Interface"
+import {Album, Artist, StructuredLyric, Line} from "../utils/Interface"
+import {ND_Song, ND_Playlist} from "../utils/ND_Interface"
 import { media } from '@kit.MediaKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import createPlaylistBuilder from './dialogs/CreatePlaylist'
@@ -33,23 +33,23 @@ export default struct MyProfile {
   @Consume ND_token: string
   @Consume ND_id: string
   @Consume artist: Artist | undefined
-  @Consume nowPlayingSong: Song | undefined
+  @Consume nowPlayingSong: ND_Song | undefined
   @Consume nowPlayingLyrics: StructuredLyric | undefined
   @Consume nowPlayingLyricsByGroup: Line[][]
-  @Consume nowPlayingList: Song[]
-  @Consume playlists: Playlist[]
-  @Consume playlist: Playlist | undefined
-  @Consume nowPlayingListOriginal: Song[]
+  @Consume nowPlayingList: ND_Song[]
+  @Consume playlists: ND_Playlist[]
+  @Consume playlist: ND_Playlist | undefined
+  @Consume nowPlayingListOriginal: ND_Song[]
   @Consume nowPlayingIndex: number
-  @Consume starredSongs: Song[]
+  @Consume starredSongs: ND_Song[]
   @Consume isPlaying: boolean
-  @Consume discs: Song[][]
+  @Consume discs: ND_Song[][]
   @Consume showMenu: boolean
   @Consume closePlay: boolean
   @Consume nowPage: number
   @Consume showPlay: boolean
   @Consume sidebarType: number
-  @Consume longPressSong: Song | undefined
+  @Consume longPressSong: ND_Song | undefined
   @Consume avPlayer: media.AVPlayer | undefined
   @StorageLink('playMode') playMode: number = 0
   @StorageLink('theme') theme: number = ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET
@@ -66,9 +66,6 @@ export default struct MyProfile {
 
   async aboutToAppear() {
     this.showProgress = true
-    // this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-    //   return Date.parse(b.changed) - Date.parse(a.changed);
-    // })
     this.uiContext = this.getUIContext();
     if (!this.uiContext) {
       console.warn("no uiContext");
@@ -149,7 +146,7 @@ export default struct MyProfile {
           .align(Alignment.TopStart)
 
           List() {
-            ForEach(this.playlists, (playlist: Playlist, index) => {
+            ForEach(this.playlists, (playlist: ND_Playlist, index) => {
               ListItem() {
                 Column() {
                   Row() {

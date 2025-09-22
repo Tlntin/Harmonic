@@ -54,9 +54,91 @@ export interface ND_Song_Participants {
 }
 
 export interface ND_Song {
-  bookmarkPosition: number,
+  playCount?: number;
+  playDate?: string;
+  starred?: boolean;
+  starredAt?: string;
+  bookmarkPosition?: number,
   id: string,
-  libraryId: 1,
+  libraryId?: number,
+  libraryPath?: string,
+  libraryName?: string,
+  folderId?: string,
+  path: string,
+  title: string,
+  album: string,
+  artist: string,
+  artistId: string,
+  albumArtistId?: string,
+  albumArtist?: string,
+  albumId: string,
+  hasCoverArt?: boolean,
+  trackNumber?: number,
+  discNumber?: number,
+  year: number,
+  date?: string,
+  originalYear?: number,
+  releaseYear?: string,
+  size: number,
+  suffix: string,
+  duration: number,
+  bitRate: number,
+  sampleRate: number,
+  bitDepth?: number,
+  channels: number,
+  genre?: string,
+  orderTitle?: string,
+  orderAlbumName?: string,
+  orderArtistName?: string,
+  orderAlbumArtistName?: string,
+  compilation?: boolean,
+  lyrics?: string,
+  explicitStatus?: string,
+  rgAlbumGain?: number,
+  rgAlbumPeak?: number,
+  rgTrackGain?: number,
+  rgTrackPeak?: number,
+  participants?: ND_Song_Participants,
+  missing?: boolean,
+  birthTime?: string,
+  createdAt: string,
+  updatedAt?: string,
+}
+
+export interface ND_getSongsResult {
+  songs: ND_Song[],
+  songCount: number
+}
+
+
+export interface ND_Playlist {
+  id: string;
+  name: string;
+  comment: string;
+  duration: number;
+  size: number,
+  songCount: number;
+  ownerName: string;
+  ownerId: string;
+  public: boolean;
+  path: string;
+  sync: boolean;
+  createdAt: string;
+  changedAt: string;
+  rules: null;
+  evaluatedAt: string;
+}
+
+export interface ND_PlayListSong {
+  id: string;
+  mediaFileId: string;
+  playlistId: string;
+  playCount?: number;
+  playDate?: string;
+  starred?: boolean;
+  starredAt?: string;
+  bookmarkPosition: number;
+  libraryId: number,
   libraryPath: string,
   libraryName: string,
   folderId: string,
@@ -71,7 +153,6 @@ export interface ND_Song {
   hasCoverArt: boolean,
   trackNumber: number,
   discNumber: number,
-  starred?: boolean;
   year: number,
   date: string,
   originalYear: number,
@@ -89,6 +170,7 @@ export interface ND_Song {
   orderArtistName: string,
   orderAlbumArtistName: string,
   compilation: boolean,
+  comment: string | null;
   lyrics: string,
   explicitStatus: string,
   rgAlbumGain: null | number,
@@ -100,11 +182,6 @@ export interface ND_Song {
   birthTime: string,
   createdAt: string,
   updatedAt: string,
-}
-
-export interface ND_getSongsResult {
-  songs: ND_Song[],
-  songCount: number
 }
 
 export interface SaveState {

@@ -1,10 +1,13 @@
 import { curves } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
-import { getLyrics, getPlaylist, getSong } from '../utils/Api';
-import { Playlist, Song, StructuredLyric, Line } from '../utils/Interface'
+// import { getLyrics} from '../utils/Api';
+import { StructuredLyric, Line } from '../utils/Interface'
+import {ND_getPlayListTracks} from "../utils/ND_Api"
+import {ND_Playlist, ND_Song, ND_PlayListSong} from "../utils/ND_Interface"
 import editPlaylistBuilder from './dialogs/EditPlaylist';
 import { ImageKnifeComponent } from '@ohos/imageknife'
+import { getLyrics } from '../utils/Api';
 
 function formatDuration(seconds: number): string {
   const roundedSeconds = Math.floor(seconds);
@@ -36,20 +39,25 @@ export function PlaylistDetailBuilder() {
 
 @Component
 export default struct PlaylistDetail {
+  @StorageLink('baseURL') baseURL: string = ''
+  @StorageLink('username') username: string = ''
+  @StorageLink('password') password: string = ''
+  @StorageLink('playMode') playMode: number = 0
+
   @Consume pageStack: NavPathStack
   @Consume displayWidth: number
-  @Consume playlist: Playlist | undefined
-  @Consume nowPlayingSong: Song | undefined
+  @Consume playlist: ND_Playlist | undefined
+  @Consume nowPlayingSong: ND_Song | undefined
   @Consume nowPlayingLyrics: StructuredLyric | undefined
   @Consume nowPlayingLyricsByGroup: Line[][]
-  @Consume nowPlayingList: Song[]
-  @Consume nowPlayingListOriginal: Song[]
+  @Consume nowPlayingList: ND_Song[]
+  @Consume nowPlayingListOriginal: ND_Song[]
   @Consume nowPlayingIndex: number
-  @Consume starredSongs: Song[]
+  @Consume starredSongs: ND_Song[]
   @Consume isPlaying: boolean
   @Consume startPlaying: boolean
   @Consume showMenu: boolean
-  @Consume longPressSong: Song | undefined
+  @Consume longPressSong: ND_Song | undefined
   @Consume longPressIndex: number
   @Consume salt: string
   @Consume version: string
@@ -61,10 +69,10 @@ export default struct PlaylistDetail {
   @Consume closePlay: boolean
   @Consume avPlayer: media.AVPlayer | undefined
   @Consume session: AVSessionManager.AVSession | undefined
-  @StorageLink('baseURL') baseURL: string = ''
-  @StorageLink('username') username: string = ''
-  @StorageLink('password') password: string = ''
-  @StorageLink('playMode') playMode: number = 0
+  @Consume ND_token: string
+  @Consume ND_id: string
+  @State playListSongs: ND_Song[] = [];
+
   @State coverSize: number = 128
   @State showProgress: boolean = false
   editPlaylist: CustomDialogController = new CustomDialogController({
@@ -88,7 +96,7 @@ export default struct PlaylistDetail {
     }
   }
 
-  getNowPlayingIndex(song: Song, list: Song[]) {
+  getNowPlayingIndex(song: ND_Song, list: ND_Song[]) {
     for (let index = 0; index < list.length; index++) {
       if (list[index].id === song.id) {
         this.nowPlayingIndex = index
@@ -107,14 +115,57 @@ export default struct PlaylistDetail {
     return array;
   }
 
+  async playSong(song: ND_Song) {
+    this.startPlaying = true
+    await this.avPlayer!.reset()
+    this.isPlaying = true
+    this.nowPlayingSong = song
+    if (song.lyrics && song.lyrics.length > 0) {
+      let temp_lyrics: StructuredLyric[] = JSON.parse(song.lyrics)
+      this.nowPlayingLyrics = temp_lyrics[0];
+    } else {
+      this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id);
+    }
+    if (this.nowPlayingLyrics !== undefined) {
+      this.groupLyrics()
+    }
+    this.nowPlayingListOriginal = this.playListSongs.slice()
+    if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE) {
+      this.nowPlayingList = this.shuffleList(this.nowPlayingListOriginal.slice())
+    } else {
+      this.nowPlayingList = this.nowPlayingListOriginal.slice()
+    }
+    this.getNowPlayingIndex(song, this.nowPlayingList)
+    this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
+    if (this.showPlay === true) {
+      this.showPlay = false
+    }
+    this.getUIContext()?.animateTo({
+      duration: 600,
+      curve: Curve.Friction
+    }, () => {
+      this.showPlay = true
+    })
+  }
+
   async aboutToAppear() {
     this.showProgress = true
+    let tempSongs = await ND_getPlayListTracks(this.baseURL, this.ND_token, this.ND_id, this.playlist!.id);
+    this.playListSongs = [];
+    if (tempSongs) {
+      for (let song of tempSongs) {
+        let songId = song.mediaFileId;
+        let newSong = song as ND_Song;
+        newSong.id = songId;
+        this.playListSongs.push(newSong);
+      }
+    }
+    console.log(`== playListSongs: ${this.playListSongs.length}`);
     this.addOrDelete = false
-    this.playlist = await getPlaylist(this.baseURL, this.username, this.password, this.playlist!.id)
     this.showProgress = false
   }
 
-  aboutToDisappear() {
+  async aboutToDisappear() {
     this.addOrDelete = true
   }
 
@@ -155,7 +206,7 @@ export default struct PlaylistDetail {
               .padding({ left: 40, right: 40 })
               .visibility(this.playlist!.comment !== undefined ? Visibility.Visible : Visibility.None)
             Row() {
-              Text(formatDate(this.playlist!.created))
+              Text(formatDate(this.playlist!.createdAt))
                 .fontSize(this.displayWidth > 1400 ? 17 : 15)
                 .fontColor($r('app.color.font_secondary'))
               Text("创建")
@@ -204,7 +255,7 @@ export default struct PlaylistDetail {
             .margin({ left: 20, right: 20 })
             .color($r('app.color.divider'))
 
-          ForEach(this.playlist!.entry, (song: Song, index) => {
+          ForEach(this.playListSongs, (song: ND_Song, index) => {
             Button({ type: ButtonType.Normal }) {
               Row() {
                 Text((index + 1).toString())
@@ -250,28 +301,7 @@ export default struct PlaylistDetail {
             .backgroundColor(Color.Transparent)
             .animation({ curve: curves.springMotion(0.6, 1) })
             .onClick(async () => {
-              this.startPlaying = true
-              await this.avPlayer!.reset()
-              this.isPlaying = true
-              this.nowPlayingSong = song
-              this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id)
-              if (this.nowPlayingLyrics !== undefined) {
-                this.groupLyrics()
-              }
-              this.nowPlayingListOriginal = this.playlist!.entry!.slice()
-              if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE) {
-                this.nowPlayingList = this.shuffleList(this.nowPlayingListOriginal.slice())
-              } else {
-                this.nowPlayingList = this.nowPlayingListOriginal.slice()
-              }
-              this.getNowPlayingIndex(song, this.nowPlayingList)
-              this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${song.id}&format=raw`;
-              this.getUIContext()?.animateTo({
-                duration: 600,
-                curve: Curve.Friction
-              }, () => {
-                this.showPlay = true
-              })
+              await this.playSong(song);
             })
             .gesture(
               LongPressGesture()
@@ -279,10 +309,11 @@ export default struct PlaylistDetail {
                   this.longPressSong = song
                   this.longPressIndex = index
                   this.showMenu = true
-                  let tmp_song: Song | undefined = await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
-                  if(tmp_song !== undefined && tmp_song.starred !== undefined){
-                    this.longPressSong!.starred = tmp_song.starred
-                  }
+                  // let tmp_song: ND_Song | undefined = await ND_getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
+                  // if(tmp_song !== undefined && tmp_song.starred !== undefined){
+                  //   this.longPressSong!.starred = tmp_song.starred
+                  // }
+                  this.longPressSong!.starred = true;
                 })
             )
           })

@@ -6,6 +6,7 @@ import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { Album, Artist, MusicFolder, Song, StructuredLyric, Line} from '../utils/Interface';
 import { ND_Song } from '../utils/ND_Interface';
 import {ND_keepAlive, ND_login} from "../utils/ND_Api";
+import { getLyrics } from '../utils/Api';
 
 let deviceTypeInfo: string = deviceInfo.deviceType;
 
@@ -133,9 +134,11 @@ export default struct Home {
     await this.avPlayer!.reset()
     this.isPlaying = true
     this.nowPlayingSong = song
-    if (song.lyrics.length > 0) {
+    if (song.lyrics && song.lyrics.length > 0) {
       let temp_lyrics: StructuredLyric[] = JSON.parse(song.lyrics)
       this.nowPlayingLyrics = temp_lyrics[0];
+    } else {
+      this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id);
     }
     if (this.nowPlayingLyrics !== undefined) {
       this.groupLyrics()

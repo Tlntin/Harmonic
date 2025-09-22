@@ -1,4 +1,5 @@
 import { Song } from '../../utils/Interface'
+import { ND_Song } from '../../utils/ND_Interface'
 
 function formatDuration(seconds: number): string {
   const roundedSeconds = Math.floor(seconds);
@@ -22,9 +23,9 @@ function bytesToMB(bytes: number): number {
 
 @CustomDialog
 export default struct infoBuilder {
-  @Consume nowPlayingSong: Song | undefined
+  @Consume nowPlayingSong: Song | ND_Song | undefined
   @Consume showPlay: boolean
-  @Consume longPressSong: Song | undefined
+  @Consume longPressSong: Song | ND_Song | undefined
   info: CustomDialogController = new CustomDialogController({
     builder: infoBuilder({})
   })
@@ -189,24 +190,24 @@ export default struct infoBuilder {
       .height(35)
       .justifyContent(FlexAlign.SpaceBetween)
 
-      Row() {
-        Text("声道")
-          .fontSize(18)
-          .fontColor($r('app.color.font'))
-        Text(this.showPlay === true ? this.nowPlayingSong!.channelCount.toString() :
-        this.longPressSong!.channelCount.toString())
-          .fontSize(18)
-          .fontColor($r('app.color.font_secondary'))
-          .width('100%')
-          .layoutWeight(1)
-          .margin({ left: 15 })
-          .textAlign(TextAlign.End)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-      }
-      .width('100%')
-      .height(35)
-      .justifyContent(FlexAlign.SpaceBetween)
+      // Row() {
+      //   Text("声道")
+      //     .fontSize(18)
+      //     .fontColor($r('app.color.font'))
+      //   Text(this.showPlay === true ? this.nowPlayingSong!.channelCount.toString() :
+      //   this.longPressSong!.channelCount.toString())
+      //     .fontSize(18)
+      //     .fontColor($r('app.color.font_secondary'))
+      //     .width('100%')
+      //     .layoutWeight(1)
+      //     .margin({ left: 15 })
+      //     .textAlign(TextAlign.End)
+      //     .maxLines(1)
+      //     .textOverflow({ overflow: TextOverflow.Ellipsis })
+      // }
+      // .width('100%')
+      // .height(35)
+      // .justifyContent(FlexAlign.SpaceBetween)
     }
     .width('100%')
     .height('100%')

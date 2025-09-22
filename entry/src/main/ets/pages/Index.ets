@@ -10,18 +10,10 @@ import { fileIo as fs, picker, ReadOptions } from '@kit.CoreFileKit';
 import CryptoJS from '@ohos/crypto-js';
 // import router from '@ohos.router';
 import {
-  getAlbumList,
   getCover,
-  // getFrequentAlbums,
-  // getIndexes,
   getLyrics,
   getMusicFolders,
-  // getNewestAlbums,
-  getPlaylist,
-  getPlaylists,
   getRandomAlbums,
-  // getRecentAlbums,
-  // getSong,
   getStarredAlbums,
   getStarredArtists,
   getVerse,
@@ -30,10 +22,9 @@ import {
   unstar,
   updatePlaylist
 } from '../utils/Api';
-import { Album, Artist, Line, MusicFolder, Playlist, // SaveState, Song,
-  StructuredLyric, Verse } from '../utils/Interface';
-import {ND_login, ND_keepAlive, ND_getArtist, ND_getSongs} from "../utils/ND_Api";
-import {ND_Artist, ND_Song, SaveState} from "../utils/ND_Interface"
+import { Album, Artist, Line, MusicFolder, StructuredLyric, Verse} from '../utils/Interface';
+import {ND_login, ND_keepAlive, ND_getPlayList, ND_getSongs} from "../utils/ND_Api";
+import {ND_Artist, ND_Song, ND_Playlist, SaveState} from "../utils/ND_Interface"
 
 import Play from './Play';
 import selectPlaylistBuilder from './dialogs/SelectPlaylist';
@@ -74,7 +65,8 @@ struct Index {
   @Provide artists: ND_Artist[] = []
   @Provide albums: Album[] = []
   @Provide songs: ND_Song[] = []
-  @Provide playlists: Playlist[] = []
+  @Provide playlist: ND_Playlist | undefined = undefined
+  @Provide playlists: ND_Playlist[] = []
   @Provide selectedPlaylists: boolean[] = []
   @Provide showProgress: boolean = false
   @StorageLink('baseURL') baseURL: string = ''
@@ -108,7 +100,6 @@ struct Index {
   @Provide selectedIndex: number = 0
   @Provide album: Album | undefined = undefined
   @Provide artist: Artist | undefined = undefined
-  @Provide playlist: Playlist | undefined = undefined
   @Provide discs: ND_Song[][] = []
   @Provide starredSongs: ND_Song[] = []
   @Provide addOrDelete: boolean = true
@@ -326,6 +317,7 @@ struct Index {
   }
 
   async setSessionInfo() {
+    // console.info(`==/setSessionInfo nowPlayingSong=${JSON.stringify(this.nowPlayingSong)}/`)
     let metadata: AVSessionManager.AVMetadata = {
       assetId: '0',
       title: this.nowPlayingSong!.title,
@@ -361,6 +353,7 @@ struct Index {
     });
   }
 
+
   async setSessionCallback() {
     this.session!.on('play', () => {
       this.isPlaying = true
@@ -386,31 +379,49 @@ struct Index {
     });
     this.session!.on('playPrevious', async () => {
       await this.avPlayer!.reset();
-      if (this.nowPlayingIndex === 0) {
-        this.nowPlayingIndex = this.nowPlayingList.length - 1
-      } else {
-        this.nowPlayingIndex -= 1
+      if (this.nowPlayingList.length > 0) {
+        if (this.nowPlayingIndex === 0) {
+          this.nowPlayingIndex = this.nowPlayingList.length - 1
+        } else {
+          this.nowPlayingIndex -= 1
+        }
+        this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
       }
-      this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-      this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-      if (this.nowPlayingLyrics !== undefined) {
-        this.groupLyrics()
+      if (this.nowPlayingSong) {
+        if (this.nowPlayingSong.lyrics && this.nowPlayingSong.lyrics.length > 0) {
+          let temp_lyrics: StructuredLyric[] = JSON.parse(this.nowPlayingSong.lyrics)
+          this.nowPlayingLyrics = temp_lyrics[0];
+        } else {
+          this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id);
+        }
+        if (this.nowPlayingLyrics !== undefined) {
+          this.groupLyrics()
+        }
+        this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
       }
-      this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
     });
     this.session!.on('playNext', async () => {
       await this.avPlayer!.reset();
-      if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
-        this.nowPlayingIndex = 0
-      } else {
-        this.nowPlayingIndex += 1
+      if (this.nowPlayingList.length > 0) {
+        if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
+          this.nowPlayingIndex = 0
+        } else {
+          this.nowPlayingIndex += 1
+        }
+        this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
       }
-      this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-      this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-      if (this.nowPlayingLyrics !== undefined) {
-        this.groupLyrics()
+      if (this.nowPlayingSong) {
+        if (this.nowPlayingSong.lyrics && this.nowPlayingSong.lyrics.length > 0) {
+          let temp_lyrics: StructuredLyric[] = JSON.parse(this.nowPlayingSong.lyrics)
+          this.nowPlayingLyrics = temp_lyrics[0];
+        } else {
+          this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id);
+        }
+        if (this.nowPlayingLyrics !== undefined) {
+          this.groupLyrics()
+        }
+        this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
       }
-      this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
     });
     this.session!.on('seek', async (time: number) => {
       await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_BUFFERING)
@@ -452,11 +463,6 @@ struct Index {
             message: '收藏成功！',
             duration: 500
           });
-          // let tmp_song: Song | undefined =
-          //   await getSong(this.baseURL, this.username, this.password, this.nowPlayingSong!.id)
-          // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-          //   this.nowPlayingSong!.starred = tmp_song.starred
-          // }
           this.nowPlayingSong!.starred = true;
           if (this.isPlaying === true) {
             await this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
@@ -595,17 +601,26 @@ struct Index {
               this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong!.id}&format=raw`;
           } else {
             await avPlayer.reset();
-            if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
-              this.nowPlayingIndex = 0
-            } else {
-              this.nowPlayingIndex += 1
+            if (this.nowPlayingList.length > 0) {
+              if (this.nowPlayingIndex === this.nowPlayingList.length - 1) {
+                this.nowPlayingIndex = 0
+              } else {
+                this.nowPlayingIndex += 1
+              }
+              this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
             }
-            this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
-            this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
-            if (this.nowPlayingLyrics !== undefined) {
-              this.groupLyrics()
+            if (this.nowPlayingSong) {
+              if (this.nowPlayingSong.lyrics && this.nowPlayingSong.lyrics.length > 0) {
+                let temp_lyrics: StructuredLyric[] = JSON.parse(this.nowPlayingSong.lyrics)
+                this.nowPlayingLyrics = temp_lyrics[0];
+              } else {
+                this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id);
+              }
+              if (this.nowPlayingLyrics !== undefined) {
+                this.groupLyrics()
+              }
+              this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
             }
-            this.avPlayer!.url = this.baseURL + '/rest/stream' + this.auth + `&id=${this.nowPlayingSong.id}&format=raw`;
           }
           break;
         case 'stopped':
@@ -718,9 +733,10 @@ struct Index {
             this.songCount = result3.songCount;
             this.frequentSongs.push(...result3.songs);
           }
-          this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-            return Date.parse(b.changed) - Date.parse(a.changed);
-          })
+          let result4 = await ND_getPlayList(this.baseURL, this.ND_token, this.ND_id);
+          if (result4) {
+            this.playlists = result4;
+          }
           let randomAlbums = await getRandomAlbums(this.baseURL, this.username, this.password, Number(id))
           this.randomAlbums.unshift(...randomAlbums)
           let starredAlbums = await getStarredAlbums(this.baseURL, this.username, this.password, Number(id))
@@ -824,9 +840,10 @@ struct Index {
       .onClick(async () => {
         this.showMenu = false
         this.selectPlaylist.open()
-        this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-          return Date.parse(b.changed) - Date.parse(a.changed);
-        })
+        let result4 = await ND_getPlayList(this.baseURL, this.ND_token, this.ND_id);
+        if (result4) {
+          this.playlists = result4;
+        }
       })
 
       Button({ type: ButtonType.Normal }) {
@@ -851,10 +868,17 @@ struct Index {
             message: '删除成功！',
             duration: 500
           });
-          this.playlist = await getPlaylist(this.baseURL, this.username, this.password, this.playlist!.id)
-          this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-            return Date.parse(b.changed) - Date.parse(a.changed);
-          })
+          let result4 = await ND_getPlayList(this.baseURL, this.ND_token, this.ND_id);
+          if (result4) {
+            this.playlists = result4;
+            if (this.playlist) {
+              for(let temp of result4) {
+                if (temp.id === this.playlist.id) {
+                  this.playlist = temp;
+                }
+              }
+            }
+          }
         } else {
           this.uiContext!.getPromptAction().showToast({
             message: '删除失败，请检查网络！',
@@ -904,11 +928,6 @@ struct Index {
               message: '收藏成功！',
               duration: 500
             });
-            // let tmp_song: Song | undefined =
-            //   await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
-            // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-            //   this.longPressSong!.starred = tmp_song.starred
-            // }
             this.longPressSong!.starred = true;
             if (this.startPlaying === true && this.longPressSong!.id === this.nowPlayingSong!.id) {
               if (this.isPlaying === true) {
@@ -1011,7 +1030,12 @@ struct Index {
               this.showList = false
               await this.avPlayer!.reset()
               this.nowPlayingSong = song
-              this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id)
+              if (song.lyrics && song.lyrics.length > 0) {
+                let temp_lyrics: StructuredLyric[] = JSON.parse(song.lyrics)
+                this.nowPlayingLyrics = temp_lyrics[0];
+              } else {
+                this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id);
+              }
               if (this.nowPlayingLyrics !== undefined) {
                 this.groupLyrics()
               }
@@ -1287,7 +1311,7 @@ struct Index {
           if (this.sidebarType === SideBarContainerType.Overlay) {
             Column()
               .width(this.displayWidth)
-              .height(this.showPlay ? '100%' : 55)
+              .height(this.showPlay ? '100%' : 50)
               .justifyContent(FlexAlign.Center)
               .backgroundImage(this.baseURL + this.getCoverUrl + this.auth + `&id=${this.nowPlayingSong?.id}&size=${this.coverSize}`)
               .backgroundImageSize(ImageSize.FILL)
@@ -1300,7 +1324,7 @@ struct Index {
               })
               .opacity(this.showPlay ? 1 : 0)
               .position({
-                bottom: 0,
+                bottom: this.showPlay ? 0: 50,
                 right: 0
               })
               .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.Hidden)
@@ -1369,8 +1393,12 @@ struct Index {
                         this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
                       }
                       if (this.nowPlayingSong) {
-                        this.nowPlayingLyrics =
-                          await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
+                        if (this.nowPlayingSong.lyrics && this.nowPlayingSong.lyrics.length > 0) {
+                          let temp_lyrics: StructuredLyric[] = JSON.parse(this.nowPlayingSong.lyrics)
+                          this.nowPlayingLyrics = temp_lyrics[0];
+                        } else {
+                          this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id);
+                        }
                         if (this.nowPlayingLyrics !== undefined) {
                           this.groupLyrics()
                         }
@@ -1438,8 +1466,12 @@ struct Index {
                         this.nowPlayingSong = this.nowPlayingList[this.nowPlayingIndex]
                       }
                       if (this.nowPlayingSong) {
-                        this.nowPlayingLyrics =
-                          await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id)
+                        if (this.nowPlayingSong.lyrics && this.nowPlayingSong.lyrics.length > 0) {
+                          let temp_lyrics: StructuredLyric[] = JSON.parse(this.nowPlayingSong.lyrics)
+                          this.nowPlayingLyrics = temp_lyrics[0];
+                        } else {
+                          this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, this.nowPlayingSong.id);
+                        }
                         if (this.nowPlayingLyrics !== undefined) {
                           this.groupLyrics()
                         }

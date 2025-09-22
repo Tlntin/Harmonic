@@ -1,5 +1,7 @@
-import { getPlaylists } from '../utils/Api'
-import { Playlist } from '../utils/Interface'
+// import { getPlaylists } from '../utils/Api'
+// import { Playlist } from '../utils/Interface'
+import { ND_getPlayList } from '../utils/ND_Api'
+import { ND_Playlist } from '../utils/ND_Interface'
 import createPlaylistBuilder from './dialogs/CreatePlaylist'
 
 @Component
@@ -10,10 +12,13 @@ export default struct Playlists {
   @Consume pageStack: NavPathStack
   @Consume startPlaying: boolean
   @Consume showSidebar: boolean
-  @Consume playlists: Playlist[]
-  @Consume playlist: Playlist | undefined
+  @Consume playlist: ND_Playlist | undefined
+  @Consume playlists: ND_Playlist[]
   @Consume showProgress: boolean
   @Consume showLibrary: boolean
+  @Consume ND_token: string
+  @Consume ND_id: string
+
   createPlaylist: CustomDialogController = new CustomDialogController({
     builder: createPlaylistBuilder(),
     width: 350,
@@ -23,9 +28,13 @@ export default struct Playlists {
 
   async aboutToAppear() {
     this.showProgress = true
-    this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-      return Date.parse(b.changed) - Date.parse(a.changed);
-    })
+    // this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
+    //   return Date.parse(b.changed) - Date.parse(a.changed);
+    // })
+    let result4 = await ND_getPlayList(this.baseURL, this.ND_token, this.ND_id);
+    if (result4) {
+      this.playlists = result4;
+    }
     this.showProgress = false
   }
 
@@ -56,7 +65,7 @@ export default struct Playlists {
         .color($r('app.color.divider'))
 
       List() {
-        ForEach(this.playlists, (playlist: Playlist, index) => {
+        ForEach(this.playlists, (playlist: ND_Playlist, index) => {
           ListItem() {
             Button({ type: ButtonType.Normal }) {
               Row() {

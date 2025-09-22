@@ -1,18 +1,22 @@
-import { getPlaylist, getPlaylists, updatePlaylist } from '../../utils/Api'
-import { Playlist, Song } from '../../utils/Interface'
+import { updatePlaylist } from '../../utils/Api'
+// import { Playlist, Song } from '../../utils/Interface'
+import {ND_getPlayList} from "../../utils/ND_Api"
+import { ND_Playlist, ND_Song } from '../../utils/ND_Interface'
 
 @CustomDialog
 export default struct selectPlaylistBuilder {
   @StorageLink('baseURL') baseURL: string = ''
   @StorageLink('username') username: string = ''
   @StorageLink('password') password: string = ''
-  @Consume playlists: Playlist[]
-  @Consume nowPlayingSong: Song | undefined
+  @Consume playlists: ND_Playlist[]
+  @Consume nowPlayingSong: ND_Song | undefined
   @Consume selectedPlaylists: boolean[]
   @Consume showPlay: boolean
-  @Consume longPressSong: Song | undefined
-  @Consume playlist: Playlist | undefined
+  @Consume longPressSong: ND_Song | undefined
+  @Consume playlist: ND_Playlist | undefined
   @State selectedPlaylistsNum: number = 0
+  @Consume ND_token: string;
+  @Consume ND_id: string;
   selectPlaylist: CustomDialogController = new CustomDialogController({
     builder: selectPlaylistBuilder({})
   })
@@ -40,7 +44,7 @@ export default struct selectPlaylistBuilder {
         .color($r('app.color.divider'))
 
       List() {
-        ForEach(this.playlists, (playlist: Playlist, index) => {
+        ForEach(this.playlists, (playlist: ND_Playlist, index) => {
           ListItem() {
             Row() {
               Text(playlist.name)
@@ -140,12 +144,23 @@ export default struct selectPlaylistBuilder {
               duration: 500
             });
           }
-          if (this.playlist !== undefined) {
-            this.playlist = await getPlaylist(this.baseURL, this.username, this.password, this.playlist!.id)
+          // if (this.playlist !== undefined) {
+          //   this.playlist = await getPlaylist(this.baseURL, this.username, this.password, this.playlist!.id)
+          // }
+          // this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
+          //   return Date.parse(b.changed) - Date.parse(a.changed);
+          // })
+          let result4 = await ND_getPlayList(this.baseURL, this.ND_token, this.ND_id);
+          if (result4) {
+            this.playlists = result4;
+            if (this.playlist) {
+              for(let temp of result4) {
+                if (temp.id === this.playlist.id) {
+                  this.playlist = temp;
+                }
+              }
+            }
           }
-          this.playlists = (await getPlaylists(this.baseURL, this.username, this.password)).sort((a, b) => {
-            return Date.parse(b.changed) - Date.parse(a.changed);
-          })
         })
       }
       .width('100%')

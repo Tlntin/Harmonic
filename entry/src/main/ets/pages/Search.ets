@@ -1,4 +1,6 @@
 import { Album, Artist, Line, MusicFolder, SearchResult, Song, StructuredLyric } from '../utils/Interface';
+import {ND_Song} from "../utils/ND_Interface"
+import {song2ND_Song} from "../utils/OtherAPI"
 import { curves } from '@kit.ArkUI';
 import { getLyrics, getSong, search } from '../utils/Api';
 import { media } from '@kit.MediaKit';
@@ -6,6 +8,7 @@ import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { PromptAction } from '@kit.ArkUI';
 import { ImageKnifeComponent } from '@ohos/imageknife'
+
 
 
 // interface SearchParams {
@@ -40,18 +43,18 @@ export default struct Search_ {
   @Consume searchArtists: Artist[]
   @Consume artist: Artist | undefined
   @Consume album: Album
-  @Consume nowPlayingSong: Song | undefined
+  @Consume nowPlayingSong: ND_Song | undefined
   @Consume nowPlayingLyrics: StructuredLyric | undefined
   @Consume nowPlayingLyricsByGroup: Line[][]
-  @Consume nowPlayingList: Song[]
-  @Consume nowPlayingListOriginal: Song[]
+  @Consume nowPlayingList: ND_Song[]
+  @Consume nowPlayingListOriginal: ND_Song[]
   @Consume nowPlayingIndex: number
   @Consume isPlaying: boolean
   @Consume startPlaying: boolean
   @Consume showSidebar: boolean
   @Consume serverStatus: boolean
   @Consume showMenu: boolean
-  @Consume longPressSong: Song | undefined
+  @Consume longPressSong: ND_Song | undefined
   @Consume sleepTime: number
   @Consume selectedIndex: number
   @Consume showProgress: boolean
@@ -86,7 +89,7 @@ export default struct Search_ {
     }
   }
 
-  getNowPlayingIndex(song: Song, list: Song[]) {
+  getNowPlayingIndex(song: Song | ND_Song, list: ND_Song[]) {
     for (let index = 0; index < list.length; index++) {
       if (list[index].id === song.id) {
         this.nowPlayingIndex = index
@@ -292,12 +295,15 @@ export default struct Search_ {
                   this.startPlaying = true
                   await this.avPlayer!.reset()
                   this.isPlaying = true
-                  this.nowPlayingSong = song
+                  this.nowPlayingSong = song2ND_Song(song);
                   this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id)
                   if (this.nowPlayingLyrics !== undefined) {
                     this.groupLyrics()
                   }
-                  this.nowPlayingListOriginal = this.searchSongs.slice()
+                  let tempList = this.searchSongs.slice();
+                  for (let tempSong of tempList) {
+                    this.nowPlayingListOriginal.push(song2ND_Song(tempSong));
+                  }
                   if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE) {
                     this.nowPlayingList = this.shuffleList(this.nowPlayingListOriginal.slice())
                   } else {
@@ -309,7 +315,7 @@ export default struct Search_ {
                 .gesture(
                   LongPressGesture()
                     .onAction(async (event: GestureEvent) => {
-                      this.longPressSong = song
+                      this.longPressSong = song2ND_Song(song);
                       this.showMenu = true
                       let tmp_song: Song | undefined =
                         await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)

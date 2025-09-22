@@ -51,6 +51,7 @@ export interface SubsonicResponse {
   artist?: Artist;
   album?: Album;
   song?: Song;
+  similarSongs?: SimilarSongs;
   albumList?: AlbumList;
   playlists?: Playlists;
   playlist?: Playlist;
@@ -118,7 +119,8 @@ export interface Song {
   size: number;
   contentType: string;
   suffix: string;
-  starred?: string;
+  starred?: boolean;
+  lyrics?: string;
   duration: number;
   bitRate: number;
   path: string;
@@ -139,6 +141,10 @@ export interface Song {
   samplingRate: number;
   transcodedContentType?: string;
   transcodedSuffix?: string;
+}
+
+export interface SimilarSongs {
+  song: Song[];
 }
 
 export interface Genre {

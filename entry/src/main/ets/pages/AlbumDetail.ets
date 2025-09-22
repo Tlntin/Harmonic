@@ -1,8 +1,10 @@
 import { curves, LengthUnit, SymbolGlyphModifier } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
-import { getAlbum, getAlbumSong, getArtist, getLyrics, getSong, star, unstar } from '../utils/Api';
-import { Album, Artist, Line, Song, StructuredLyric } from '../utils/Interface';
+import { getAlbum, getArtist, getLyrics, star, unstar } from '../utils/Api';
+import { Album, Artist, Line, StructuredLyric } from '../utils/Interface';
+import {ND_getSongs} from "../utils/ND_Api";
+import {ND_Song} from "../utils/ND_Interface";
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { ImageKnifeComponent } from '@ohos/imageknife'
 
@@ -42,16 +44,16 @@ export default struct AlbumDetail {
   @Consume getCoverUrl: string
   @State artists: Artist[] = []
   @Consume artist: Artist | undefined
-  @Consume nowPlayingSong: Song | undefined
+  @Consume nowPlayingSong: ND_Song | undefined
   @Consume nowPlayingLyrics: StructuredLyric | undefined
   @Consume nowPlayingLyricsByGroup: Line[][]
-  @Consume nowPlayingList: Song[]
-  @Consume nowPlayingListOriginal: Song[]
+  @Consume nowPlayingList: ND_Song[]
+  @Consume nowPlayingListOriginal: ND_Song[]
   @Consume nowPlayingIndex: number
-  @Consume starredSongs: Song[]
+  @Consume starredSongs: ND_Song[]
   @Consume isPlaying: boolean
   @Consume startPlaying: boolean
-  @Consume discs: Song[][]
+  @Consume discs: ND_Song[][]
   @Consume showMenu: boolean
   @Consume needUpdate: boolean
   @Consume closePlay: boolean
@@ -59,14 +61,17 @@ export default struct AlbumDetail {
   @Consume showPlay: boolean
   @Consume displayWidth: number
   @Consume sidebarType: number
-  @Consume longPressSong: Song | undefined
+  @Consume longPressSong: ND_Song | undefined
   @Consume avPlayer: media.AVPlayer | undefined
+  @Consume ND_token: string
+  @Consume ND_id: string
   @StorageLink('playMode') playMode: number = 0
   @Consume session: AVSessionManager.AVSession | undefined
   @State coverSize: number = 256
   @State showDiscHeader: boolean = false
   @State discsKeys: number[] = []
   @State showProgress: boolean = false
+  @State albumSongs: ND_Song[] = [];
 
   groupLyrics() {
     this.nowPlayingLyricsByGroup = []
@@ -82,7 +87,7 @@ export default struct AlbumDetail {
     }
   }
 
-  getNowPlayingIndex(song: Song, list: Song[]) {
+  getNowPlayingIndex(song: ND_Song, list: ND_Song[]) {
     for (let index = 0; index < list.length; index++) {
       if (list[index].id === song.id) {
         this.nowPlayingIndex = index
@@ -103,22 +108,26 @@ export default struct AlbumDetail {
 
   async aboutToAppear() {
     this.showProgress = true
-    this.album.song = await getAlbumSong(this.baseURL, this.username, this.password, this.album.id);
-    const groupedSongsMap = new Map<number, Song[]>();
-    this.album.song!.forEach((song) => {
-      let disc = song.discNumber;
-      if (disc === undefined) {
-        disc = 0;
-      }
-      if (!groupedSongsMap.has(disc)) {
-        groupedSongsMap.set(disc, []);
-      }
-      groupedSongsMap.get(disc)?.push(song);
-    });
-    const sortedKeys = Array.from(groupedSongsMap.keys()).sort((a, b) => a - b);
-    this.discs = sortedKeys.map(key => groupedSongsMap.get(key)!);
-    this.discsKeys = sortedKeys;
-    this.showDiscHeader = !(sortedKeys.length === 1 && (sortedKeys[0] === 0 || sortedKeys[0] === 1));
+    // this.album.song = await getAlbumSong(this.baseURL, this.username, this.password, this.album.id);
+    let result1 = await ND_getSongs(this.baseURL, this.ND_token, this.ND_id, 0, 0, "ASC", "title", this.album.id);
+    if (result1) {
+      const groupedSongsMap = new Map<number, ND_Song[]>();
+      this.albumSongs = result1.songs;
+      this.albumSongs.forEach((song) => {
+        let disc = song.discNumber;
+        if (disc === undefined) {
+          disc = 0;
+        }
+        if (!groupedSongsMap.has(disc)) {
+          groupedSongsMap.set(disc, []);
+        }
+        groupedSongsMap.get(disc)?.push(song);
+      });
+      const sortedKeys = Array.from(groupedSongsMap.keys()).sort((a, b) => a - b);
+      this.discs = sortedKeys.map(key => groupedSongsMap.get(key)!);
+      this.discsKeys = sortedKeys;
+      this.showDiscHeader = !(sortedKeys.length === 1 && (sortedKeys[0] === 0 || sortedKeys[0] === 1));
+    }
     this.showProgress = false
   }
 
@@ -214,7 +223,7 @@ export default struct AlbumDetail {
             .color($r('app.color.divider'))
 
           if (this.showDiscHeader) {
-            ForEach(this.discs, (disc: Song[], index) => {
+            ForEach(this.discs, (disc: ND_Song[], index) => {
               Column() {
                 Text(this.discsKeys[index] === 0 ? "DISC" : "DISC " + this.discsKeys[index])
                   .width('100%')
@@ -222,10 +231,10 @@ export default struct AlbumDetail {
                   .fontColor($r('app.color.font'))
                   .fontWeight(FontWeight.Bold)
                   .padding({ left: 20, top: 20 })
-                ForEach(disc, (song: Song, index2) => {
+                ForEach(disc, (song: ND_Song, index2) => {
                   Button({ type: ButtonType.Normal }) {
                     Row() {
-                      Text(song.track !== undefined ? song.track.toString() : '-')
+                      Text(song.trackNumber !== undefined ? song.trackNumber.toString() : '-')
                         .fontSize(18)
                         .fontColor($r('app.color.font_secondary'))
                         .width(80)
@@ -260,11 +269,16 @@ export default struct AlbumDetail {
                     await this.avPlayer!.reset()
                     this.isPlaying = true
                     this.nowPlayingSong = song
-                    this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id)
+                    if (song.lyrics && song.lyrics.length > 0) {
+                      let temp_lyrics: StructuredLyric[] = JSON.parse(song.lyrics)
+                      this.nowPlayingLyrics = temp_lyrics[0];
+                    } else {
+                      this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id);
+                    }
                     if (this.nowPlayingLyrics !== undefined) {
                       this.groupLyrics()
                     }
-                    this.nowPlayingListOriginal = this.album.song!.slice()
+                    this.nowPlayingListOriginal = this.albumSongs.slice()
                     if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE) {
                       this.nowPlayingList = this.shuffleList(this.nowPlayingListOriginal.slice())
                     } else {
@@ -284,11 +298,12 @@ export default struct AlbumDetail {
                       .onAction(async (event: GestureEvent) => {
                         this.longPressSong = song
                         this.showMenu = true
-                        let tmp_song: Song | undefined =
-                          await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
-                        if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-                          this.longPressSong!.starred = tmp_song.starred
-                        }
+                        // let tmp_song: Song | undefined =
+                        //   await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
+                        // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
+                        //   this.longPressSong!.starred = tmp_song.starred
+                        // }
+                        this.longPressSong!.starred = true;
                       })
                   )
                 })
@@ -301,10 +316,10 @@ export default struct AlbumDetail {
               }
             })
           } else {
-            ForEach(this.discs[0], (song: Song, index) => {
+            ForEach(this.discs[0], (song: ND_Song, index) => {
               Button({ type: ButtonType.Normal }) {
                 Row() {
-                  Text(song.track !== undefined ? song.track.toString() : '-')
+                  Text(song.trackNumber !== undefined ? song.trackNumber.toString() : '-')
                     .fontSize(18)
                     .fontColor($r('app.color.font_secondary'))
                     .width(80)
@@ -339,11 +354,16 @@ export default struct AlbumDetail {
                 await this.avPlayer!.reset()
                 this.isPlaying = true
                 this.nowPlayingSong = song
-                this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id)
+                if (song.lyrics && song.lyrics.length > 0) {
+                  let temp_lyrics: StructuredLyric[] = JSON.parse(song.lyrics)
+                  this.nowPlayingLyrics = temp_lyrics[0];
+                } else {
+                  this.nowPlayingLyrics = await getLyrics(this.baseURL, this.username, this.password, song.id);
+                }
                 if (this.nowPlayingLyrics !== undefined) {
                   this.groupLyrics()
                 }
-                this.nowPlayingListOriginal = this.album.song!.slice()
+                this.nowPlayingListOriginal = this.albumSongs.slice()
                 if (this.playMode === AVSessionManager.LoopMode.LOOP_MODE_SHUFFLE) {
                   this.nowPlayingList = this.shuffleList(this.nowPlayingListOriginal.slice())
                 } else {
@@ -363,11 +383,12 @@ export default struct AlbumDetail {
                   .onAction(async (event: GestureEvent) => {
                     this.longPressSong = song
                     this.showMenu = true
-                    let tmp_song: Song | undefined =
-                      await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
-                    if (tmp_song !== undefined && tmp_song.starred !== undefined) {
-                      this.longPressSong!.starred = tmp_song.starred
-                    }
+                    // let tmp_song: Song | undefined =
+                    //   await getSong(this.baseURL, this.username, this.password, this.longPressSong!.id)
+                    // if (tmp_song !== undefined && tmp_song.starred !== undefined) {
+                    //   this.longPressSong!.starred = tmp_song.starred
+                    // }
+                    this.longPressSong!.starred = true;
                   })
               )
             })
